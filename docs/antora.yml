@@ -1,0 +1,5 @@
+name: quarkus-chappie
+title: Chappie
+version: dev
+nav:
+  - modules/ROOT/nav.adoc
