@@ -16,6 +16,10 @@
             <artifactId>quarkus-arc-deployment</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-vertx-http-deployment</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkiverse.chappie</groupId>
             <artifactId>quarkus-chappie</artifactId>
             <version>${project.version}</version>
