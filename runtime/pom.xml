@@ -10,11 +10,70 @@
     <artifactId>quarkus-chappie</artifactId>
     <name>Quarkus Chappie - Runtime</name>
 
+    <properties>
+        <langchain4j.version>0.32.0</langchain4j.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
+        <!-- To do AI -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <!-- TODO: This is removed in the langchain extension -->
+            <!--<exclusions>
+                <exclusion>
+                    <groupId>com.squareup.retrofit2</groupId>
+                    <artifactId>retrofit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.code.gson</groupId>
+                    <artifactId>gson</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.retrofit2</groupId>
+                    <artifactId>converter-gson</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp-sse</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.github.spullara.mustache.java</groupId>
+                    <artifactId>compiler</artifactId>
+                </exclusion>
+            </exclusions>-->
+        </dependency>
+        
+        <!-- To bind to object -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jackson</artifactId>
+        </dependency>
+        
         <!-- TODO: Consider moving the mutiny logger to core ? -->
         <dependency>
             <groupId>io.quarkus</groupId>
