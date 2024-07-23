@@ -1,0 +1,46 @@
+
+:summaryTableId: quarkus-chappie
+[.configuration-legend]
+icon:lock[title=Fixed at build time] Configuration property fixed at build time - All other configuration properties are overridable at runtime
+[.configuration-reference.searchable, cols="80,.^10,.^10"]
+|===
+
+h|[[quarkus-chappie_configuration]]link:#quarkus-chappie_configuration[Configuration property]
+
+h|Type
+h|Default
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-api-key]]`link:#quarkus-chappie_quarkus-chappie-api-key[quarkus.chappie.api-key]`
+
+
+[.description]
+--
+Your OpenAI Api Key
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_API_KEY+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_API_KEY+++`
+endif::add-copy-button-to-env-var[]
+--|string 
+|`apiKey`
+
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-model-name]]`link:#quarkus-chappie_quarkus-chappie-model-name[quarkus.chappie.model-name]`
+
+
+[.description]
+--
+The OpenAI Model to use
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_MODEL_NAME+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_MODEL_NAME+++`
+endif::add-copy-button-to-env-var[]
+--|string 
+|`gpt-4-turbo`
+
+|===
