@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.runtime;
+package io.quarkiverse.chappie.deployment;
 
 /**
  * Contains the suggested fix from AI

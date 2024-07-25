@@ -1,6 +1,5 @@
 package io.quarkiverse.chappie.runtime;
 
-import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -8,7 +7,9 @@ import java.util.Set;
  *
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
-public record ExceptionDetail(LocalDateTime time,
+public record ExceptionDetail(String sequenceNumber,
+        String time,
+        String message,
         String stacktrace,
         Set<String> effectedSourceFilesContent) {
 
