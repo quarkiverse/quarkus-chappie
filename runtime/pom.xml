@@ -10,11 +10,9 @@
     <artifactId>quarkus-chappie</artifactId>
     <name>Quarkus Chappie - Runtime</name>
 
-    <properties>
-        <langchain4j.version>0.32.0</langchain4j.version>
-    </properties>
+    
 
-    <dependencyManagement>
+<!--    <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
@@ -24,7 +22,7 @@
                 <scope>import</scope>
             </dependency>
         </dependencies>
-    </dependencyManagement>
+    </dependencyManagement>-->
 
     <dependencies>
         <dependency>
@@ -32,15 +30,14 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
         <!-- To do AI -->
-        <dependency>
+<!--        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <!-- TODO: This is removed in the langchain extension -->
-            <!--<exclusions>
+            <exclusions>
                 <exclusion>
                     <groupId>com.squareup.retrofit2</groupId>
                     <artifactId>retrofit</artifactId>
@@ -65,8 +62,8 @@
                     <groupId>com.github.spullara.mustache.java</groupId>
                     <artifactId>compiler</artifactId>
                 </exclusion>
-            </exclusions>-->
-        </dependency>
+            </exclusions>
+        </dependency>-->
         
         <!-- To bind to object -->
         <dependency>

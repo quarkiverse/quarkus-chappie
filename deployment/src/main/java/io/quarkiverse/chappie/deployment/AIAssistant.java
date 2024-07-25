@@ -1,16 +1,11 @@
-package io.quarkiverse.chappie.runtime;
+package io.quarkiverse.chappie.deployment;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static java.util.Arrays.asList;
 
 import java.util.List;
 import java.util.Map;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import org.jboss.logging.Logger;
+import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,29 +24,17 @@ import dev.langchain4j.model.output.Response;
  *
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
-@ApplicationScoped
 public class AIAssistant {
-    private static final Logger log = Logger.getLogger(AIAssistant.class.getName());
+    private static AIAssistant INSTANCE;
 
-    @Inject
-    ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Prompt systemMessagePrompt;
+    private final String apiKey;
+    private final String modelName;
 
-    private Prompt systemMessagePrompt;
-    private String apiKey;
-    private String modelName;
-
-    public void setVersion(String version) {
-        this.systemMessagePrompt = systemMessageTemplate.apply(Map.of("version", version));
-    }
-
-    public void setApiKey(String apiKey) {
+    public AIAssistant(String quarkusVersion, String apiKey, String modelName) {
+        this.systemMessagePrompt = systemMessageTemplate.apply(Map.of("version", quarkusVersion));
         this.apiKey = apiKey;
-    }
-
-    public void setModelName(String modelName) {
-        if (modelName == null || modelName.isBlank())
-            throw new NullPointerException(
-                    "Please supply an OpenAI Model Name as a config property [quarkus.chappie.model-name]");
         this.modelName = modelName;
     }
 
@@ -71,7 +54,7 @@ public class AIAssistant {
     private final PromptTemplate systemMessageTemplate = PromptTemplate
             .from(SYSTEM_MESSAGE);
 
-    private static final String USER_MESSAGE = """
+    private static final String USER_MESSAGE_WITH_SOURCE = """
                 I have the following java exception:
                 ```
                 {{stacktrace}}
@@ -85,17 +68,31 @@ public class AIAssistant {
                 Please help me fix it.
             """;
 
-    private final PromptTemplate userMessageTemplate = PromptTemplate
-            .from(USER_MESSAGE);
+    private static final String USER_MESSAGE_WITHOUT_SOURCE = """
+                I have the following java exception in my Quarkus app:
+                ```
+                {{stacktrace}}
+                ```
 
-    public SuggestedFix helpFix(
-            String stacktrace,
-            String source) {
+                Please help me fix it.
+            """;
 
+    private final PromptTemplate userMessageWithSourceTemplate = PromptTemplate
+            .from(USER_MESSAGE_WITH_SOURCE);
+
+    private final PromptTemplate userMessageWithoutSourceTemplate = PromptTemplate
+            .from(USER_MESSAGE_WITHOUT_SOURCE);
+
+    public CompletableFuture<SuggestedFix> helpFix(String stacktrace, String source) {
         if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("apiKey")) {
-            Prompt userMessagePrompt = userMessageTemplate.apply(Map.of("stacktrace", stacktrace, "source", source));
+            Prompt userMessagePrompt;
+            if (source != null) {
+                userMessagePrompt = userMessageWithSourceTemplate.apply(Map.of("stacktrace", stacktrace, "source", source));
+            } else {
+                userMessagePrompt = userMessageWithoutSourceTemplate.apply(Map.of("stacktrace", stacktrace));
+            }
 
-            List<ChatMessage> messages = asList(systemMessage(systemMessagePrompt.text()),
+            List<ChatMessage> messages = List.of(systemMessage(systemMessagePrompt.text()),
                     userMessage(userMessagePrompt.text()));
 
             ChatLanguageModel model = OpenAiChatModel.builder()
@@ -105,21 +102,20 @@ public class AIAssistant {
                     .responseFormat("json_object")
                     .build();
 
-            Response<AiMessage> response = model.generate(messages);
-            System.out.println("FINISH REASON = " + response.finishReason());
-            System.out.println("TOTAL TOKENS = " + response.tokenUsage().totalTokenCount());
-            System.out.println("RESPONSE TYPE = " + response.content().type());
-            System.out.println("RESPONSE = " + response.content().text());
-
-            try {
-                return objectMapper.readValue(response.content().text(), SuggestedFix.class);
-            } catch (JsonProcessingException ex) {
-                throw new RuntimeException("Error while parsing the response from AI", ex);
-            }
+            return CompletableFuture.supplyAsync(() -> {
+                Response<AiMessage> response = model.generate(messages);
+                try {
+                    return objectMapper.readValue(response.content().text(), SuggestedFix.class);
+                } catch (JsonProcessingException ex) {
+                    throw new RuntimeException("Error while parsing the response from AI", ex);
+                }
+            });
+        } else {
+            return CompletableFuture.completedFuture(new SuggestedFix(
+                    "The quarkus-chappie extension could not assist with this exception",
+                    "You need to provide a `quarkus.chappie.api-key` config property that is set to your OpenAI API key",
+                    null,
+                    null));
         }
-        return new SuggestedFix("The quarkus-chappie extension could not assist with this exception",
-                "You need to provice a `quarkus.chappie.api-key` config property that is set to your OpenAI api key", null,
-                null);
     }
-
 }
