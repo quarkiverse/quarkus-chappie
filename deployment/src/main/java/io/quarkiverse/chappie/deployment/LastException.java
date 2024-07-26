@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.runtime;
+package io.quarkiverse.chappie.deployment;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

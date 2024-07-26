@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import io.quarkiverse.chappie.runtime.LastException;
 import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -60,7 +59,7 @@ class ChappieProcessor {
 
         Vertx vertx = Vertx.vertx();
         chappieConsoleContext.reset(
-                new ConsoleCommand('a', "Get AI to help with the last exception",
+                new ConsoleCommand('a', "Help with the latest exception",
                         new ConsoleCommand.HelpState(new Supplier<String>() {
                             @Override
                             public String get() {
@@ -88,7 +87,7 @@ class ChappieProcessor {
                                 String stacktraceString = lastException.getStackTraceString();
 
                                 System.out.println(
-                                        "Chappie\n===============\nAsking AI to assist with the exception, please wait");
+                                        "Chappie\n===============\nAssisting with the exception, please wait");
 
                                 long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
@@ -98,9 +97,9 @@ class ChappieProcessor {
                                     vertx.cancelTimer(timer);
                                     System.out.println("\n\n" + suggestedFix.response());
                                     System.out.println("\n\n" + suggestedFix.explanation());
-                                    System.out.println("------ Diff ------ ");
+                                    System.out.println("\n------ Diff ------ ");
                                     System.out.println("\n\n" + suggestedFix.diff());
-                                    System.out.println("------ Suggested source ------ ");
+                                    System.out.println("\n------ Suggested source ------ ");
                                     System.out.println("\n\n" + suggestedFix.suggestedSource());
                                 }).exceptionally(throwable -> {
                                     // Handle any errors

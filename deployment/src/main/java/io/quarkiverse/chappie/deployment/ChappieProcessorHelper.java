@@ -5,7 +5,6 @@ import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-import io.quarkiverse.chappie.runtime.LastException;
 import io.quarkus.bootstrap.model.ApplicationModel;
 import io.quarkus.bootstrap.workspace.WorkspaceModule;
 import io.quarkus.deployment.annotations.BuildProducer;
