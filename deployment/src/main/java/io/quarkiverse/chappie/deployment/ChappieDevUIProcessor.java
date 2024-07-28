@@ -8,8 +8,6 @@ import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-import io.quarkiverse.chappie.runtime.ChappieJsonRPCService;
-import io.quarkiverse.chappie.runtime.LastException;
 import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -19,8 +17,6 @@ import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
 import io.quarkus.deployment.pkg.builditem.OutputTargetBuildItem;
-import io.quarkus.dev.console.DevConsoleManager;
-import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -61,32 +57,25 @@ class ChappieDevUIProcessor {
 
         chappiePage.addPage(Page.webComponentPageBuilder()
                 .icon("font-awesome-solid:circle-question")
-                .title("AI Assistance")
+                .title("Help with the latest exception")
                 .componentLink("qwc-chappie-exception.js"));
 
         return chappiePage;
     }
 
     @BuildStep(onlyIf = IsDevelopment.class)
-    JsonRPCProvidersBuildItem createJsonRPCService(LastExceptionBuildItem lastExceptionBuildItem) {
-
-        DevConsoleManager.register("chappie-exception-notification", (t) -> {
-            return lastExceptionBuildItem.getLastExceptionPublisher();
-        });
-
-        return new JsonRPCProvidersBuildItem(ChappieJsonRPCService.class);
-    }
-
-    @BuildStep(onlyIf = IsDevelopment.class)
     BuildTimeActionBuildItem createBuildTimeActions(CurateOutcomeBuildItem curateOutcomeBuildItem,
             OutputTargetBuildItem outputTargetBuildItem,
+            LastExceptionBuildItem lastExceptionBuildItem,
             ChappieConfig chappieConfig) {
 
         Path srcMainJava = ChappieProcessorHelper.getSourceRoot(curateOutcomeBuildItem.getApplicationModel(),
                 outputTargetBuildItem.getOutputDirectory());
 
-        BuildTimeActionBuildItem generateManifestActions = new BuildTimeActionBuildItem();
-        generateManifestActions.addAction("getLastException", ignored -> {
+        BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
+
+        // This gets the last know exception. For initial load.
+        buildItemActions.addAction("getLastException", ignored -> {
             LastException lastException = lastExceptionReference.get();
             if (lastException != null) {
                 return lastException;
@@ -94,9 +83,14 @@ class ChappieDevUIProcessor {
             return null;
         });
 
+        // This streams exceptions as they happen
+        buildItemActions.addSubscription("streamException", ignored -> {
+            return lastExceptionBuildItem.getLastExceptionPublisher();
+        });
+
         // TODO: Get last suggested Fix
 
-        generateManifestActions.addAction("helpFix", ignored -> {
+        buildItemActions.addAction("helpFix", ignored -> {
             LastException lastException = lastExceptionReference.get();
             if (lastException != null) {
                 StackTraceElement stackTraceElement = lastException.stackTraceElement();
@@ -123,7 +117,7 @@ class ChappieDevUIProcessor {
             return null;
         });
 
-        return generateManifestActions;
+        return buildItemActions;
     }
 
 }

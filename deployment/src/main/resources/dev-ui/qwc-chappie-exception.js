@@ -73,7 +73,7 @@ export class QwcChappieException extends observeState(LitElement) {
     connectedCallback() {
         super.connectedCallback();
         // Subscribe to real-time exceptions
-        this._observer = this.jsonRpc.streamLastException().onNext(jsonRpcResponse => { 
+        this._observer = this.jsonRpc.streamException().onNext(jsonRpcResponse => { 
             this._lastException = jsonRpcResponse.result;
             this._suggestedFix = null;
         });
@@ -109,7 +109,7 @@ export class QwcChappieException extends observeState(LitElement) {
     _renderSuggestedFix(){
         if(this._showProgressBar){
             return html`<div>
-                            <label class="text-secondary" id="pblbl">Talking to AI...</label>
+                            <label class="text-secondary" id="pblbl">Talking to Chappie...</label>
                             <vaadin-progress-bar
                               indeterminate
                               aria-labelledby="pblbl"
