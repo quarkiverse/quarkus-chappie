@@ -20,9 +20,12 @@ import io.quarkus.deployment.pkg.builditem.OutputTargetBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
+import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
+import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
 class ChappieDevUIProcessor {
+    private static final String EXCEPTION_TITLE = "Help with the latest exception";
 
     static volatile AtomicReference<LastException> lastExceptionReference;
 
@@ -52,12 +55,19 @@ class ChappieDevUIProcessor {
     }
 
     @BuildStep(onlyIf = IsDevelopment.class)
+    public ErrorPageActionsBuildItem addActionToErrorPage(NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
+        String url = nonApplicationRootPathBuildItem.resolvePath(
+                "dev-ui/io.quarkiverse.chappie.quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
+        return new ErrorPageActionsBuildItem("Get help with this", url);
+    }
+
+    @BuildStep(onlyIf = IsDevelopment.class)
     public CardPageBuildItem pages() {
         CardPageBuildItem chappiePage = new CardPageBuildItem();
 
         chappiePage.addPage(Page.webComponentPageBuilder()
                 .icon("font-awesome-solid:circle-question")
-                .title("Help with the latest exception")
+                .title(EXCEPTION_TITLE)
                 .componentLink("qwc-chappie-exception.js"));
 
         return chappiePage;
