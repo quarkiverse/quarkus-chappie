@@ -1,23 +1,17 @@
 package io.quarkiverse.chappie.deployment;
 
-import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.quarkus.builder.item.SimpleBuildItem;
-import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
 final class LastExceptionBuildItem extends SimpleBuildItem {
+    private final AtomicReference<LastException> lastException;
 
-    private final BroadcastProcessor<LastException> lastExceptionBroadcastProcessor;
-
-    public LastExceptionBuildItem(BroadcastProcessor<LastException> lastExceptionBroadcastProcessor) {
-        this.lastExceptionBroadcastProcessor = lastExceptionBroadcastProcessor;
+    public LastExceptionBuildItem(AtomicReference<LastException> lastException) {
+        this.lastException = lastException;
     }
 
-    public BroadcastProcessor<LastException> getLastExceptionBroadcastProcessor() {
-        return lastExceptionBroadcastProcessor;
-    }
-
-    public Flow.Publisher<LastException> getLastExceptionPublisher() {
-        return (Flow.Publisher<LastException>) this.lastExceptionBroadcastProcessor;
+    public AtomicReference<LastException> getLastException() {
+        return lastException;
     }
 }
