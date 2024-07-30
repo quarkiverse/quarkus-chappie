@@ -11,50 +11,58 @@ import java.util.function.Supplier;
 
 import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsDevelopment;
-import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
-import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.dev.testing.MessageFormat;
-import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
-import io.quarkus.deployment.pkg.builditem.OutputTargetBuildItem;
+import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.vertx.core.Vertx;
 
+/**
+ * Main Chappie Processor. This create a few Build Items also used by the DevUI processor
+ *
+ * @author Phillip Kruger (phillip.kruger@gmail.com)
+ */
 class ChappieProcessor {
 
     private static final String FEATURE = "chappie";
+
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
 
-    static volatile AIAssistant aiAssistant;
+    @BuildStep(onlyIf = IsDevelopment.class)
+    AIAssistantBuildItem createAIAssitant(ChappieConfig chappieConfig) {
+        return new AIAssistantBuildItem(Version.getVersion(), chappieConfig.apiKey, chappieConfig.modelName);
+    }
 
     @BuildStep(onlyIf = IsDevelopment.class)
-    FeatureBuildItem feature() {
-        return new FeatureBuildItem(FEATURE);
+    LastExceptionBuildItem createLastExceptionReference() {
+        final AtomicReference<LastException> lastException = new AtomicReference<>();
+        return new LastExceptionBuildItem(lastException);
     }
+
+    //    @BuildStep(onlyIf = IsDevelopment.class)
+    //    ExceptionNotificationBuildItem listenForExceptions(LastExceptionBuildItem lastExceptionBuildItem) {
+    //        return new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
+    //            @Override
+    //            public void accept(Throwable throwable, StackTraceElement stackTraceElement) {
+    //                lastExceptionBuildItem.getLastException().set(new LastException(stackTraceElement, throwable));
+    //            }
+    //        });
+    //    }
 
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep(onlyIf = IsDevelopment.class)
-    void setupExceptionHandler(BuildProducer<ExceptionNotificationBuildItem> exceptionNotificationProducer,
-            CurateOutcomeBuildItem curateOutcomeBuildItem,
-            OutputTargetBuildItem outputTargetBuildItem,
-            ChappieConfig chappieConfig) {
+    FeatureBuildItem setupConsole(LastExceptionBuildItem lastExceptionBuildItem,
+            LoggingDecorateBuildItem loggingDecorateBuildItem,
+            AIAssistantBuildItem assistantBuildItem) {
 
-        Path srcMainJava = ChappieProcessorHelper.getSourceRoot(curateOutcomeBuildItem.getApplicationModel(),
-                outputTargetBuildItem.getOutputDirectory());
-
-        final AtomicReference<LastException> lastExceptionReference = ChappieProcessorHelper
-                .getLastException(exceptionNotificationProducer);
+        Path srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
 
         if (chappieConsoleContext == null) {
             chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Chappie");
-        }
-
-        if (aiAssistant == null) {
-            aiAssistant = new AIAssistant(Version.getVersion(), chappieConfig.apiKey, chappieConfig.modelName);
         }
 
         Vertx vertx = Vertx.vertx();
@@ -68,7 +76,7 @@ class ChappieProcessor {
                         }, new Supplier<String>() {
                             @Override
                             public String get() {
-                                LastException lastException = lastExceptionReference.get();
+                                LastException lastException = lastExceptionBuildItem.getLastException().get();
                                 if (lastException == null) {
                                     return "none";
                                 }
@@ -77,7 +85,7 @@ class ChappieProcessor {
                         }), new Runnable() {
                             @Override
                             public void run() {
-                                LastException lastException = lastExceptionReference.get();
+                                LastException lastException = lastExceptionBuildItem.getLastException().get();
                                 if (lastException == null) {
                                     return;
                                 }
@@ -91,7 +99,8 @@ class ChappieProcessor {
 
                                 long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
-                                CompletableFuture<SuggestedFix> futureFix = aiAssistant.helpFix(stacktraceString, sourceString);
+                                CompletableFuture<SuggestedFix> futureFix = assistantBuildItem.helpFix(stacktraceString,
+                                        sourceString);
 
                                 futureFix.thenAccept(suggestedFix -> {
                                     vertx.cancelTimer(timer);
@@ -110,9 +119,12 @@ class ChappieProcessor {
 
                             }
                         }));
-
+        return new FeatureBuildItem(FEATURE);
     }
 
+    /**
+     * Read the source code that triggered the exception, so that we can send it to AI with the exception
+     */
     private String getRelevantSource(Path srcMainJava, StackTraceElement stackTraceElement) {
         if (stackTraceElement != null) {
             String className = stackTraceElement.getClassName();

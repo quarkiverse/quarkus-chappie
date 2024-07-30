@@ -17,6 +17,7 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
+import io.quarkus.builder.item.SimpleBuildItem;
 
 /**
  * Chat to AI sending all info on the exception
@@ -24,15 +25,13 @@ import dev.langchain4j.model.output.Response;
  *
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
-public class AIAssistant {
-    private static AIAssistant INSTANCE;
-
+final class AIAssistantBuildItem extends SimpleBuildItem {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Prompt systemMessagePrompt;
     private final String apiKey;
     private final String modelName;
 
-    public AIAssistant(String quarkusVersion, String apiKey, String modelName) {
+    public AIAssistantBuildItem(String quarkusVersion, String apiKey, String modelName) {
         this.systemMessagePrompt = systemMessageTemplate.apply(Map.of("version", quarkusVersion));
         this.apiKey = apiKey;
         this.modelName = modelName;
