@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import io.quarkus.builder.Version;
@@ -18,7 +17,6 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
-import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.vertx.core.Vertx;
@@ -45,15 +43,15 @@ class ChappieProcessor {
         return new LastExceptionBuildItem(lastException);
     }
 
-    @BuildStep(onlyIf = IsDevelopment.class)
-    ExceptionNotificationBuildItem listenForExceptions(LastExceptionBuildItem lastExceptionBuildItem) {
-        return new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
-            @Override
-            public void accept(Throwable throwable, StackTraceElement stackTraceElement) {
-                lastExceptionBuildItem.getLastException().set(new LastException(stackTraceElement, throwable));
-            }
-        });
-    }
+    //    @BuildStep(onlyIf = IsDevelopment.class)
+    //    ExceptionNotificationBuildItem listenForExceptions(LastExceptionBuildItem lastExceptionBuildItem) {
+    //        return new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
+    //            @Override
+    //            public void accept(Throwable throwable, StackTraceElement stackTraceElement) {
+    //                lastExceptionBuildItem.getLastException().set(new LastException(stackTraceElement, throwable));
+    //            }
+    //        });
+    //    }
 
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep(onlyIf = IsDevelopment.class)

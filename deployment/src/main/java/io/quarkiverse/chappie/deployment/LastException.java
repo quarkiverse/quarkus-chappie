@@ -3,7 +3,7 @@ package io.quarkiverse.chappie.deployment;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-public record LastException(StackTraceElement stackTraceElement, Throwable throwable) {
+public record LastException(StackTraceElement stackTraceElement, Throwable throwable, String decorateString) {
 
     public String getStackTraceString() {
         StringWriter stringWriter = new StringWriter();

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import io.quarkus.deployment.IsDevelopment;
@@ -16,12 +17,16 @@ import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
+import io.quarkus.runtime.logging.DecorateStackUtil;
 import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
 import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
 class ChappieDevUIProcessor {
     private static final String EXCEPTION_TITLE = "Help with the latest exception";
+
+    static volatile Path srcMainJava;
+    static volatile List<String> knownClasses;
 
     @BuildStep(onlyIf = IsDevelopment.class)
     LastExceptionBroadcastBuildItem createBroadcasters() {
@@ -31,12 +36,15 @@ class ChappieDevUIProcessor {
 
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep(onlyIf = IsDevelopment.class)
-    ExceptionNotificationBuildItem setupBroadcaster(LastExceptionBroadcastBuildItem lastExceptionBroadcastBuildItem) {
+    ExceptionNotificationBuildItem setupBroadcaster(LastExceptionBroadcastBuildItem lastExceptionBroadcastBuildItem,
+            LastExceptionBuildItem lastExceptionBuildItem) {
         return new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
             @Override
             public void accept(Throwable throwable, StackTraceElement stackTraceElement) {
-                LastException lastException = new LastException(stackTraceElement, throwable);
+                String decorateString = DecorateStackUtil.getDecoratedString(throwable, srcMainJava, knownClasses);
+                LastException lastException = new LastException(stackTraceElement, throwable, decorateString);
                 lastExceptionBroadcastBuildItem.getLastExceptionBroadcastProcessor().onNext(lastException);
+                lastExceptionBuildItem.getLastException().set(lastException);
             }
         });
     }
@@ -66,8 +74,12 @@ class ChappieDevUIProcessor {
             AIAssistantBuildItem assistantBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem) {
 
-        Path srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
-
+        if (srcMainJava == null) {
+            srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
+        }
+        if (knownClasses == null) {
+            knownClasses = loggingDecorateBuildItem.getKnowClasses();
+        }
         BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
 
         // This gets the last know exception. For initial load.

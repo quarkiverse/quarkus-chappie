@@ -94,6 +94,7 @@ export class QwcChappieException extends observeState(LitElement) {
                         fileName='${this._lastException.stackTraceElement.className}'
                         lineNumber=${this._lastException.stackTraceElement.lineNumber}>Exception in ${this._lastException.stackTraceElement.fileName} line ${this._lastException.stackTraceElement.lineNumber}:</qui-ide-link>
             
+                    <pre class="stacktrace">${this._lastException.decorateString}</pre>
                     <pre class="stacktrace">${this._lastException.stackTraceString}</pre>
                     
                     ${this._renderSuggestedFix()}
