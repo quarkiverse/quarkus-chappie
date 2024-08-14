@@ -1,0 +1,22 @@
+package io.quarkiverse.chappie.deployment.openai;
+
+import java.util.Optional;
+
+import io.quarkus.runtime.annotations.ConfigGroup;
+import io.smallrye.config.WithDefault;
+
+@ConfigGroup
+public interface OpenAIConfig {
+
+    /**
+     * Your OpenAI Api Key
+     */
+    Optional<String> apiKey();
+
+    /**
+     * The Model to use
+     */
+    @WithDefault("gpt-4-turbo")
+    String modelName();
+
+}
