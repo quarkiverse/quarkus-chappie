@@ -82,7 +82,7 @@ export class QwcChappieException extends observeState(LitElement) {
     }
 
     disconnectedCallback() {
-        this._observer.cancel();
+        if(this._observer)this._observer.cancel();
         super.disconnectedCallback();      
     }
 
@@ -124,34 +124,26 @@ export class QwcChappieException extends observeState(LitElement) {
             
             return html`<div class="fix">
                             <span class="heading-fix">Suggested fix from AI</span>
-                            <p>
-                                ${this._suggestedFix.response}
-                            </p>
+                            <p>${this._suggestedFix.response}</p>
             
-                            <p>
-${this._suggestedFix.explanation}
-                            </p>
+                            <p>${this._suggestedFix.explanation}</p>
                             
                             Diff:
-                            <pre>
-${this._suggestedFix.diff}
-                            </pre>
+                            <pre>${this._suggestedFix.diff}</pre>
             
                             Suggested new code:
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
                                     theme='${themeState.theme.name}'>
-                                    <slot>
-                                        ${this._suggestedFix.suggestedSource}
-                                    </slot>
+                                    <slot>${this._suggestedFix.suggestedSource}</slot>
                                 </qui-code-block>
                             </div>
                         </div>
 
             `;
         }else {
-            return html`<vaadin-button theme="primary" @click="${this._helpFix}">Suggest fix with AI</vaadin-button>`;
+            return html`<vaadin-button theme="primary" @click="${this._suggestFix}">Suggest fix with AI</vaadin-button>`;
         }
     }
     
@@ -163,10 +155,10 @@ ${this._suggestedFix.diff}
         });
     }
     
-    _helpFix(){
+    _suggestFix(){
         this._showProgressBar = true;
         // Get the current last know exception
-        this.jsonRpc.helpFix().then(jsonRpcResponse => { 
+        this.jsonRpc.suggestFix().then(jsonRpcResponse => { 
             this._showProgressBar = false;
             this._suggestedFix = jsonRpcResponse.result;
         });

@@ -10,7 +10,30 @@ h|[[quarkus-chappie_configuration]]link:#quarkus-chappie_configuration[Configura
 h|Type
 h|Default
 
-a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-api-key]]`link:#quarkus-chappie_quarkus-chappie-api-key[quarkus.chappie.api-key]`
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-llm]]`link:#quarkus-chappie_quarkus-chappie-llm[quarkus.chappie.llm]`
+
+
+[.description]
+--
+The LLM to use, example, openai, ollama
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_LLM+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_LLM+++`
+endif::add-copy-button-to-env-var[]
+-- a|
+tooltip:openai[OpenAI config], tooltip:ollama[Ollama config] 
+|
+
+
+h|[[quarkus-chappie_quarkus-chappie-openai-openai-config]]link:#quarkus-chappie_quarkus-chappie-openai-openai-config[OpenAI config]
+
+h|Type
+h|Default
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-openai-api-key]]`link:#quarkus-chappie_quarkus-chappie-openai-api-key[quarkus.chappie.openai.api-key]`
 
 
 [.description]
@@ -18,29 +41,104 @@ a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-api-key
 Your OpenAI Api Key
 
 ifdef::add-copy-button-to-env-var[]
-Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_API_KEY+++[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OPENAI_API_KEY+++[]
 endif::add-copy-button-to-env-var[]
 ifndef::add-copy-button-to-env-var[]
-Environment variable: `+++QUARKUS_CHAPPIE_API_KEY+++`
+Environment variable: `+++QUARKUS_CHAPPIE_OPENAI_API_KEY+++`
 endif::add-copy-button-to-env-var[]
 --|string 
-|`apiKey`
+|
 
 
-a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-model-name]]`link:#quarkus-chappie_quarkus-chappie-model-name[quarkus.chappie.model-name]`
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-openai-model-name]]`link:#quarkus-chappie_quarkus-chappie-openai-model-name[quarkus.chappie.openai.model-name]`
 
 
 [.description]
 --
-The OpenAI Model to use
+The Model to use
 
 ifdef::add-copy-button-to-env-var[]
-Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_MODEL_NAME+++[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OPENAI_MODEL_NAME+++[]
 endif::add-copy-button-to-env-var[]
 ifndef::add-copy-button-to-env-var[]
-Environment variable: `+++QUARKUS_CHAPPIE_MODEL_NAME+++`
+Environment variable: `+++QUARKUS_CHAPPIE_OPENAI_MODEL_NAME+++`
 endif::add-copy-button-to-env-var[]
 --|string 
 |`gpt-4-turbo`
+
+
+h|[[quarkus-chappie_quarkus-chappie-ollama-ollama-config]]link:#quarkus-chappie_quarkus-chappie-ollama-ollama-config[Ollama config]
+
+h|Type
+h|Default
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-ollama-enabled]]`link:#quarkus-chappie_quarkus-chappie-ollama-enabled[quarkus.chappie.ollama.enabled]`
+
+
+[.description]
+--
+If DevServices has been explicitly enabled or disabled. DevServices is generally enabled by default, unless there is an existing configuration present.
+
+When DevServices is enabled Quarkus will attempt to automatically serve a model if there are any matching ones.
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OLLAMA_ENABLED+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_OLLAMA_ENABLED+++`
+endif::add-copy-button-to-env-var[]
+--|boolean 
+|`true`
+
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-ollama-port]]`link:#quarkus-chappie_quarkus-chappie-ollama-port[quarkus.chappie.ollama.port]`
+
+
+[.description]
+--
+The default port where the inference server listens for requests
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OLLAMA_PORT+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_OLLAMA_PORT+++`
+endif::add-copy-button-to-env-var[]
+--|int 
+|`11434`
+
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-ollama-model-name]]`link:#quarkus-chappie_quarkus-chappie-ollama-model-name[quarkus.chappie.ollama.model-name]`
+
+
+[.description]
+--
+The Model to use
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OLLAMA_MODEL_NAME+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_OLLAMA_MODEL_NAME+++`
+endif::add-copy-button-to-env-var[]
+--|string 
+|`llama2`
+
+
+a|icon:lock[title=Fixed at build time] [[quarkus-chappie_quarkus-chappie-ollama-preload]]`link:#quarkus-chappie_quarkus-chappie-ollama-preload[quarkus.chappie.ollama.preload]`
+
+
+[.description]
+--
+Instructs Ollama to preload a model in order to get faster response times
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_CHAPPIE_OLLAMA_PRELOAD+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_CHAPPIE_OLLAMA_PRELOAD+++`
+endif::add-copy-button-to-env-var[]
+--|boolean 
+|`true`
 
 |===

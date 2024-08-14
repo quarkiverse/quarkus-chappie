@@ -1,20 +1,34 @@
 package io.quarkiverse.chappie.deployment;
 
-import io.quarkus.runtime.annotations.ConfigItem;
+import java.util.Optional;
+
+import io.quarkiverse.chappie.deployment.ollama.OllamaConfig;
+import io.quarkiverse.chappie.deployment.openai.OpenAIConfig;
+import io.quarkus.runtime.annotations.ConfigDocSection;
+import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
 
-@ConfigRoot(name = "chappie")
-public final class ChappieConfig {
-
-    /**
-     * Your OpenAI Api Key
-     */
-    @ConfigItem(defaultValue = "apiKey")
-    public String apiKey;
+@ConfigMapping(prefix = "quarkus.chappie")
+@ConfigRoot(phase = ConfigPhase.BUILD_TIME)
+public interface ChappieConfig {
 
     /**
-     * The OpenAI Model to use
+     * The LLM to use, example, openai, ollama
      */
-    @ConfigItem(defaultValue = "gpt-4-turbo")
-    public String modelName;
+    Optional<LLM> llm();
+
+    /**
+     * OpenAI config
+     */
+    //    @WithParentName
+    @ConfigDocSection
+    OpenAIConfig openai();
+
+    /**
+     * Ollama config
+     */
+    //    @WithParentName
+    @ConfigDocSection
+    OllamaConfig ollama();
 }
