@@ -19,7 +19,9 @@ export class QwcChappieCustomCard extends LitElement {
       }
 
       .config {
-    
+        color: var(--lumo-contrast-40pct);
+        font-size: smaller;
+        padding-bottom: 10px;
       }
 
       .description {
@@ -48,7 +50,6 @@ export class QwcChappieCustomCard extends LitElement {
         description: {attribute: true},
         guide: {attribute: true},
         namespace: {attribute: true},
-        _status: {state: true},
         _llm: {state: true},
         _modelName: {state: true}
     };
@@ -56,21 +57,12 @@ export class QwcChappieCustomCard extends LitElement {
 
     constructor() {
         super();
-        this._status = null;
         this._llm = llm;
         this._modelName = modelName;
     }
 
     connectedCallback() {
         super.connectedCallback();
-//            this._observer = this.jsonRpc.streamStatus().onNext(jsonRpcResponse => { 
-//                this._status = jsonRpcResponse.result;
-//            });
-//            
-//            this.jsonRpc.getStatus().then(jsonRpcResponse => { 
-//                this._status = jsonRpcResponse.result;
-//            }); 
-        
     }
 
     disconnectedCallback() {
@@ -97,24 +89,7 @@ export class QwcChappieCustomCard extends LitElement {
     }
 
     _renderInfo(){
-        if(this._status){
-            if(this._status === "starting"){
-                return html`<div>
-                                <label class="text-secondary" id="statusprogressbar">Starting ${this._llm} (${this._modelName})</label>
-                                <vaadin-progress-bar indeterminate aria-labelledby="statusprogressbar" theme="success"></vaadin-progress-bar>
-                            </div>`;
-            }else if(this._status === "started"){
-                return html`<qui-badge text="Started" level="success" icon="circle-check">
-                                <span>${this._llm} (${this._modelName})</span>
-                            </qui-badge>`;
-            }else {
-                return html`<qui-badge text="Error" level="error" icon="circle-exclamation">
-                                <span>${this._llm} (${this._modelName})</span>
-                            </qui-badge>`;
-            }               
-        }else {
-            return html`<div class="config">Configured to use ${this._llm} (${this._modelName})</div>`;
-        }
+        return html`<div class="config">Using ${this._llm} (${this._modelName})</div>`;
     }
 
     _renderCardLinks(){

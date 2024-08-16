@@ -1,5 +1,6 @@
 import { LitElement, html, css} from 'lit'; 
 import { JsonRpc } from 'jsonrpc';
+import '@vaadin/accordion';
 import '@vaadin/button';
 import '@vaadin/progress-bar';
 import 'qui-ide-link';
@@ -25,14 +26,11 @@ export class QwcChappieException extends observeState(LitElement) {
             flex-direction: column;
             height: 100%;
         }
-        .heading-exception {
-            color: var(--lumo-error-color);
-            font-size: x-large; 
-        }
         .fix {
             display: flex;
             flex-direction: column;
             height: 100%;
+            padding-top: 20px;
         }
         .heading-fix {
             color: var(--lumo-success-color);
@@ -55,6 +53,19 @@ export class QwcChappieException extends observeState(LitElement) {
             align-items: center;
             justify-content: center;
         }
+        
+        .buttons {
+            position: fixed;
+            right: 14px;
+        }
+    
+        .ide {
+            color: var(--lumo-contrast-50pct);
+            font-family: var(--lumo-font-family);
+            font-size: var(--lumo-font-size-s);
+            padding-right: 10px;
+        }
+    
     `;
     
     static properties = {
@@ -88,49 +99,72 @@ export class QwcChappieException extends observeState(LitElement) {
 
     render() { 
         if (this._lastException) {
-            return html`<div class="exception">
-                    <qui-ide-link title='Source full class name'
-                        class='heading-exception'
-                        fileName='${this._lastException.stackTraceElement.className}'
-                        lineNumber=${this._lastException.stackTraceElement.lineNumber}>Exception in ${this._lastException.stackTraceElement.fileName} line ${this._lastException.stackTraceElement.lineNumber}:</qui-ide-link>
-            
-                    <pre class="stacktrace">${this._lastException.decorateString}</pre>
-                    <pre class="stacktrace">${this._lastException.stackTraceString}</pre>
-                    
-                    ${this._renderSuggestedFix()}
-                </div>
-                `;
+            return html`${this._renderButtons()}
+                        ${this._renderException()}
+                        ${this._renderSuggestedFix()}`;
         } else {
             return html`<div class="nothing">No exception detected yet. <span class="checkNow" @click="${this._checkLastException}">Check now</span></div>`;
         }
     }
     
+    _renderException(){
+        return html`<vaadin-accordion>
+                        <vaadin-accordion-panel summary="Code" theme="filled">
+                            <div class="exception">
+                                <pre class="stacktrace">${this._lastException.decorateString}</pre>
+                            </div>
+                        </vaadin-accordion-panel>
+                        <vaadin-accordion-panel summary="Stacktrace" theme="filled">
+                            <div class="exception">
+                                <pre class="stacktrace">${this._lastException.stackTraceString}</pre>
+                            </div>
+                        </vaadin-accordion-panel>
+                    </vaadin-accordion>`;
+    }
     
+    _renderButtons(){
+        return html`<div class="buttons">
+                        ${this._renderIDEButton()}
+                        ${this._renderFixButton()}
+                    </div>`;
+    }
+    
+    _renderIDEButton(){
+        return html`<qui-ide-link class="ide" title='Click to view where the exception occurred'
+                        fileName='${this._lastException.stackTraceElement.className}'
+                        lineNumber=${this._lastException.stackTraceElement.lineNumber}>View in IDE
+                    </qui-ide-link>`;
+    }
+    
+    _renderFixButton(){
+        if(!this._showProgressBar && !this._suggestedFix){
+            return html`<vaadin-button theme="primary small" @click="${this._suggestFix}">Suggest fix with AI</vaadin-button>`;
+        }
+    }
     
     _renderSuggestedFix(){
         if(this._showProgressBar){
-            return html`<div>
-                            <label class="text-secondary" id="pblbl">Talking to Chappie...</label>
+            return html`<div class="fix">
+                            <label class="text-secondary" id="pblbl">Talking to AI...</label>
                             <vaadin-progress-bar
-                              indeterminate
-                              aria-labelledby="pblbl"
-                              aria-describedby="sublbl"
+                                indeterminate
+                                aria-labelledby="pblbl"
+                                aria-describedby="sublbl"
                             ></vaadin-progress-bar>
                             <span class="text-secondary text-xs" id="sublbl">
-                              This can take a while, please hold
+                                This can take a while, please hold
                             </span>
                         </div>`;
         }else if(this._suggestedFix){
-            
             return html`<div class="fix">
                             <span class="heading-fix">Suggested fix from AI</span>
                             <p>${this._suggestedFix.response}</p>
-            
+
                             <p>${this._suggestedFix.explanation}</p>
-                            
+
                             Diff:
                             <pre>${this._suggestedFix.diff}</pre>
-            
+
                             Suggested new code:
                             <div class="codeBlock">
                                 <qui-code-block
@@ -139,11 +173,7 @@ export class QwcChappieException extends observeState(LitElement) {
                                     <slot>${this._suggestedFix.suggestedSource}</slot>
                                 </qui-code-block>
                             </div>
-                        </div>
-
-            `;
-        }else {
-            return html`<vaadin-button theme="primary" @click="${this._suggestFix}">Suggest fix with AI</vaadin-button>`;
+                        </div>`;
         }
     }
     
