@@ -1,4 +1,4 @@
-name: Chappie
+name: Assistant
 description: AI Assistance for Quarkus
 metadata:
   short-name: "AI"
@@ -6,9 +6,10 @@ metadata:
   - chappie
   - AI
   - Assistance
+  - Assistant
   guide: https://quarkiverse.github.io/quarkiverse-docs/chappie/dev/
   categories:
   - "miscellaneous"
   status: "stable"
   config:
-  - "quarkus.chappie."
+  - "quarkus.assistant."

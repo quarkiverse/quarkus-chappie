@@ -1,22 +1,12 @@
 package io.quarkiverse.chappie.deployment;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import org.jboss.logging.Logger;
-
-import io.quarkiverse.chappie.deployment.ollama.OllamaAssistant;
-import io.quarkiverse.chappie.deployment.openai.OpenAIAssistant;
-import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsDevelopment;
-import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
@@ -35,30 +25,7 @@ import io.vertx.core.Vertx;
  */
 @BuildSteps(onlyIf = IsDevelopment.class)
 class ChappieProcessor {
-    private final static Logger LOGGER = Logger.getLogger(ChappieProcessor.class);
-    private static final String FEATURE = "chappie";
-
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
-
-    @BuildStep
-    void createAssitant(BuildProducer<AssistantBuildItem> assistantProducer, ChappieConfig chappieConfig) {
-        if (chappieConfig.llm().isPresent()) {
-            LLM llm = chappieConfig.llm().get();
-
-            if (llm.equals(LLM.openai)) {
-                String apiKey = chappieConfig.openai().apiKey().orElseThrow();
-                Assistant assistant = new OpenAIAssistant(Version.getVersion(), apiKey, chappieConfig.openai().modelName());
-                assistantProducer.produce(new AssistantBuildItem(assistant));
-            } else if (llm.equals(LLM.ollama)) {
-                Assistant assistant = new OllamaAssistant(Version.getVersion(), chappieConfig.ollama().port(),
-                        chappieConfig.ollama().modelName());
-                assistantProducer.produce(new AssistantBuildItem(assistant));
-            }
-        } else {
-            LOGGER.warn(
-                    "Chappie is added, but not configured. You need to at least set quarkus.chappie.llm to get a working extension.");
-        }
-    }
 
     @BuildStep
     LastExceptionBuildItem createLastExceptionReference() {
@@ -67,102 +34,102 @@ class ChappieProcessor {
     }
 
     @Consume(ConsoleInstalledBuildItem.class)
-    @BuildStep
+    @BuildStep(onlyIf = ChappieEnabled.class)
     FeatureBuildItem setupConsole(LastExceptionBuildItem lastExceptionBuildItem,
-            LoggingDecorateBuildItem loggingDecorateBuildItem,
-            Optional<AssistantBuildItem> maybeAssistantBuildItem) {
+            ChappieClientBuildItem chappieClientBuildItem,
+            LoggingDecorateBuildItem loggingDecorateBuildItem) {
 
         Path srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
 
         if (chappieConsoleContext == null) {
-            chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Chappie");
+            chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Assistant");
         }
-        if (maybeAssistantBuildItem.isPresent()) {
-            AssistantBuildItem assistantBuildItem = maybeAssistantBuildItem.get();
-            Vertx vertx = Vertx.vertx();
-            chappieConsoleContext.reset(
-                    new ConsoleCommand('a', "Help with the latest exception",
-                            new ConsoleCommand.HelpState(new Supplier<String>() {
-                                @Override
-                                public String get() {
-                                    return MessageFormat.RED;
+
+        Vertx vertx = Vertx.vertx();
+        chappieConsoleContext.reset(
+                new ConsoleCommand('a', "Help with the latest exception",
+                        new ConsoleCommand.HelpState(new Supplier<String>() {
+                            @Override
+                            public String get() {
+                                return MessageFormat.RED;
+                            }
+                        }, new Supplier<String>() {
+                            @Override
+                            public String get() {
+                                LastException lastException = lastExceptionBuildItem.getLastException().get();
+                                if (lastException == null) {
+                                    return "none";
                                 }
-                            }, new Supplier<String>() {
-                                @Override
-                                public String get() {
-                                    LastException lastException = lastExceptionBuildItem.getLastException().get();
-                                    if (lastException == null) {
-                                        return "none";
-                                    }
-                                    return lastException.throwable().getMessage();
+                                return lastException.throwable().getMessage();
+                            }
+                        }), new Runnable() {
+                            @Override
+                            public void run() {
+                                LastException lastException = lastExceptionBuildItem.getLastException().get();
+                                if (lastException == null) {
+                                    return;
                                 }
-                            }), new Runnable() {
-                                @Override
-                                public void run() {
-                                    LastException lastException = lastExceptionBuildItem.getLastException().get();
-                                    if (lastException == null) {
-                                        return;
-                                    }
 
-                                    String sourceString = getRelevantSource(srcMainJava, lastException.stackTraceElement());
+                                String sourceString = SourceCodeFinder.getSourceCode(srcMainJava,
+                                        lastException.stackTraceElement());
 
-                                    String stacktraceString = lastException.getStackTraceString();
+                                String stacktraceString = lastException.getStackTraceString();
 
-                                    System.out.println(
-                                            "Chappie\n===============\nAssisting with the exception, please wait");
+                                System.out.println(
+                                        "===============\nAssisting with the exception, please wait");
 
-                                    long timer = vertx.setPeriodic(800, id -> System.out.print("."));
+                                long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
-                                    Assistant assistant = assistantBuildItem.getAssistant();
+                                ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
+                                Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
 
-                                    CompletableFuture<SuggestedFix> futureFix = assistant.suggestFix(stacktraceString,
-                                            sourceString);
+                                CompletableFuture<Object> futureResult = chappieClient.executeRPC("exception#suggestfix",
+                                        params);
 
-                                    futureFix.thenAccept(suggestedFix -> {
-                                        vertx.cancelTimer(timer);
-                                        System.out.println("\n\n" + suggestedFix.response());
-                                        System.out.println("\n\n" + suggestedFix.explanation());
-                                        System.out.println("\n------ Diff ------ ");
-                                        System.out.println("\n\n" + suggestedFix.diff());
-                                        System.out.println("\n------ Suggested source ------ ");
-                                        System.out.println("\n\n" + suggestedFix.suggestedSource());
-                                    }).exceptionally(throwable -> {
-                                        // Handle any errors
-                                        System.out.println("\n\nCould not get a response from ai due the this exception:");
-                                        throwable.printStackTrace();
-                                        return null;
-                                    });
+                                futureResult.thenAccept(r -> {
+                                    vertx.cancelTimer(timer);
+                                    Map result = (Map) r;
 
-                                }
-                            }));
-        } else {
-            // TODO: Allow enabling right here in the log ?
-        }
-        return new FeatureBuildItem(FEATURE);
+                                    System.out.println("\n\n" + result.get("response"));
+                                    System.out.println("\n\n" + result.get("explanation"));
+                                    System.out.println("\n------ Diff ------ ");
+                                    System.out.println("\n\n" + result.get("diff"));
+                                    System.out.println("\n------ Suggested source ------ ");
+                                    System.out.println("\n\n" + result.get("suggestedSource"));
+                                }).exceptionally(throwable -> {
+                                    // Handle any errors
+                                    System.out.println("\n\nCould not get a response from ai due the this exception:");
+                                    throwable.printStackTrace();
+                                    return null;
+                                });
+                            }
+                        }));
+
+        return new FeatureBuildItem(Feature.FEATURE);
     }
 
     /**
      * Read the source code that triggered the exception, so that we can send it to AI with the exception
      */
-    private String getRelevantSource(Path srcMainJava, StackTraceElement stackTraceElement) {
-        if (stackTraceElement != null) {
-            String className = stackTraceElement.getClassName();
-            String file = stackTraceElement.getFileName();
-            if (className.contains(".")) {
-                file = className.substring(0, className.lastIndexOf('.') + 1).replace('.',
-                        File.separatorChar)
-                        + file;
-            }
-
-            Path filePath = srcMainJava.resolve(file);
-
-            try {
-                return Files.readString(filePath);
-            } catch (IOException ex) {
-                throw new UncheckedIOException(ex);
-            }
-        }
-        return null;
-    }
+    //    private String getRelevantSource(Path srcMainJava, StackTraceElement stackTraceElement) {
+    //        if (stackTraceElement != null) {
+    //            String className = stackTraceElement.getClassName();
+    //            String file = stackTraceElement.getFileName();
+    //            if (className.contains(".")) {
+    //                file = className.substring(0, className.lastIndexOf('.') + 1).replace('.',
+    //                        File.separatorChar)
+    //                        + file;
+    //            }
+    //
+    //            Path filePath = srcMainJava.resolve(file);
+    //
+    //            try {
+    //                return Files.readString(filePath);
+    //            } catch (IOException ex) {
+    //                throw new UncheckedIOException(ex);
+    //            }
+    //        }
+    //        return null;
+    //    }
 
 }

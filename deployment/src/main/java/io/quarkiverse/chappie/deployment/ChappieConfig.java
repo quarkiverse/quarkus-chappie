@@ -2,6 +2,7 @@ package io.quarkiverse.chappie.deployment;
 
 import java.util.Optional;
 
+import io.quarkiverse.chappie.deployment.devservices.DevServicesConfig;
 import io.quarkiverse.chappie.deployment.ollama.OllamaConfig;
 import io.quarkiverse.chappie.deployment.openai.OpenAIConfig;
 import io.quarkus.runtime.annotations.ConfigDocSection;
@@ -9,7 +10,7 @@ import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 
-@ConfigMapping(prefix = "quarkus.chappie")
+@ConfigMapping(prefix = "quarkus.assistant")
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
 public interface ChappieConfig {
 
@@ -21,14 +22,18 @@ public interface ChappieConfig {
     /**
      * OpenAI config
      */
-    //    @WithParentName
     @ConfigDocSection
     OpenAIConfig openai();
 
     /**
      * Ollama config
      */
-    //    @WithParentName
     @ConfigDocSection
     OllamaConfig ollama();
+
+    /**
+     * Dev Services
+     */
+    @ConfigDocSection
+    DevServicesConfig devservices();
 }
