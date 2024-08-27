@@ -97,6 +97,12 @@ export class QwcChappieException extends observeState(LitElement) {
         });
         // Get the current last know exception
         this._checkLastException();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoSuggest = urlParams.get('autoSuggest');
+        if(autoSuggest){
+            this._suggestFix();
+        }
     }
 
     disconnectedCallback() {
