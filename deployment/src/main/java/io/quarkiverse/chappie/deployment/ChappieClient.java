@@ -61,7 +61,7 @@ public class ChappieClient {
                                 }
                             });
                             this.ws.closeHandler((e) -> {
-                                System.out.println(">>>>>>>>>>>>> CLOSING !");
+                                // TODO: Possibly needs to reconnect ?
                             });
                         } else {
                             // Just try again.

@@ -25,4 +25,9 @@ public interface DevServicesConfig {
      */
     Optional<URL> url();
 
+    /**
+     * The process id of the chappie server
+     */
+    Optional<Long> processId();
+
 }

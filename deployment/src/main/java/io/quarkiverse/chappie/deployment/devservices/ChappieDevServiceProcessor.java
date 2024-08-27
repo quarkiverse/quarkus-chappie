@@ -82,7 +82,8 @@ public class ChappieDevServiceProcessor {
             }
 
             Map<String, String> props = Map.of(
-                    "quarkus.assistant.devservices.url", jsonRpcBase);
+                    "quarkus.assistant.devservices.url", jsonRpcBase,
+                    "quarkus.assistant.devservices.process-id", "" + process.pid());
 
             devServicesResultProducer
                     .produce(

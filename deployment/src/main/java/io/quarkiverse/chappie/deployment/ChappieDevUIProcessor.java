@@ -1,7 +1,12 @@
 package io.quarkiverse.chappie.deployment;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 import io.quarkus.deployment.IsDevelopment;
@@ -99,6 +104,7 @@ class ChappieDevUIProcessor {
             ChappieClientBuildItem chappieClientBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
+            LastSolutionBuildItem lastSolutionBuildItem,
             ChappieConfig chappieConfig) {
 
         if (srcMainJava == null) {
@@ -127,13 +133,40 @@ class ChappieDevUIProcessor {
         buildItemActions.addAction("suggestFix", ignored -> {
             LastException lastException = lastExceptionBuildItem.getLastException().get();
             if (lastException != null) {
+                Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, lastException.stackTraceElement());
                 String sourceString = SourceCodeFinder.getSourceCode(srcMainJava, lastException.stackTraceElement());
                 String stacktraceString = lastException.getStackTraceString();
 
                 ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
                 Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
+                CompletableFuture<Object> result = chappieClient.executeRPC("exception#suggestfix", params);
 
-                return chappieClient.executeRPC("exception#suggestfix", params);
+                result.thenApply(suggestedFix -> {
+                    lastSolutionBuildItem.getLastSolution().set(suggestedFix);
+                    lastSolutionBuildItem.getPath().set(sourcePath);
+                    return suggestedFix;
+                });
+
+                return result;
+            }
+            return null;
+        });
+
+        // This suggest fix based on exception and code
+        buildItemActions.addAction("applyFix", code -> {
+            Object lastSolution = lastSolutionBuildItem.getLastSolution().get();
+            Path path = lastSolutionBuildItem.getPath().get();
+            if (lastSolution != null && path != null) {
+                Map jsonRPCResponse = (Map) lastSolution;
+                if (jsonRPCResponse.containsKey("suggestedSource")) {
+                    String newCode = (String) jsonRPCResponse.get("suggestedSource");
+                    try {
+                        Files.writeString(path, newCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+                        return path.toString();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
             }
             return null;
         });

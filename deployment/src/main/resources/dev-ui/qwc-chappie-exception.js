@@ -7,6 +7,8 @@ import 'qui-ide-link';
 import '@qomponent/qui-code-block';
 import { observeState } from 'lit-element-state';
 import { themeState } from 'theme-state';
+import { notifier } from 'notifier';
+import { devuiState } from 'devui-state';
 
 /**
  * This component shows the last exception
@@ -65,7 +67,12 @@ export class QwcChappieException extends observeState(LitElement) {
             font-size: var(--lumo-font-size-s);
             padding-right: 10px;
         }
-    
+        .codeBlockHeader {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: baseline;
+        }
     `;
     
     static properties = {
@@ -157,15 +164,27 @@ export class QwcChappieException extends observeState(LitElement) {
                         </div>`;
         }else if(this._suggestedFix){
             return html`<div class="fix">
-                            <span class="heading-fix">Suggested fix from AI</span>
+                            <span class="heading-fix">
+                                Suggested fix from AI
+                            </span>
                             <p>${this._suggestedFix.response}</p>
 
                             <p>${this._suggestedFix.explanation}</p>
 
-                            Diff:
-                            <pre>${this._suggestedFix.diff}</pre>
-
-                            Suggested new code:
+                            <h4>Diff:</h4>
+                            <div class="codeBlock">
+                                <qui-code-block
+                                    mode='java'
+                                    theme='${themeState.theme.name}'>
+                                    <slot>${this._suggestedFix.diff}</slot>
+                                </qui-code-block>
+                            </div>
+                            
+                            <div class="codeBlockHeader">
+                                <h4>Suggested new code:</h4>
+                                <vaadin-button theme="primary small" @click="${this._applyFix}">Apply fix to your code</vaadin-button>
+                            </div>
+                            
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
@@ -173,6 +192,7 @@ export class QwcChappieException extends observeState(LitElement) {
                                     <slot>${this._suggestedFix.suggestedSource}</slot>
                                 </qui-code-block>
                             </div>
+                            
                         </div>`;
         }
     }
@@ -191,6 +211,13 @@ export class QwcChappieException extends observeState(LitElement) {
         this.jsonRpc.suggestFix().then(jsonRpcResponse => { 
             this._showProgressBar = false;
             this._suggestedFix = jsonRpcResponse.result;
+        });
+    }
+    
+    _applyFix(){
+        this.jsonRpc.applyFix().then(jsonRpcResponse => { 
+            fetch(devuiState.applicationInfo.contextRoot);
+            notifier.showInfoMessage("Updated " + jsonRpcResponse.result);
         });
     }
     
