@@ -33,6 +33,13 @@ class ChappieProcessor {
         return new LastExceptionBuildItem(lastException);
     }
 
+    @BuildStep
+    LastSolutionBuildItem createLastSolutionReference() {
+        final AtomicReference<Object> lastSuggestedFix = new AtomicReference<>();
+        final AtomicReference<Path> path = new AtomicReference<>();
+        return new LastSolutionBuildItem(lastSuggestedFix, path);
+    }
+
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep(onlyIf = ChappieEnabled.class)
     FeatureBuildItem setupConsole(LastExceptionBuildItem lastExceptionBuildItem,

@@ -9,6 +9,21 @@ import java.nio.file.Path;
 public class SourceCodeFinder {
 
     public static String getSourceCode(Path srcMainJava, StackTraceElement stackTraceElement) {
+
+        Path filePath = getSourceCodePath(srcMainJava, stackTraceElement);
+
+        if (filePath != null) {
+            try {
+                return Files.readString(filePath);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+        }
+
+        return null;
+    }
+
+    public static Path getSourceCodePath(Path srcMainJava, StackTraceElement stackTraceElement) {
         if (stackTraceElement != null) {
             String className = stackTraceElement.getClassName();
             String file = stackTraceElement.getFileName();
@@ -18,13 +33,7 @@ public class SourceCodeFinder {
                         + file;
             }
 
-            Path filePath = srcMainJava.resolve(file);
-
-            try {
-                return Files.readString(filePath);
-            } catch (IOException ex) {
-                throw new UncheckedIOException(ex);
-            }
+            return srcMainJava.resolve(file);
         }
         return null;
     }

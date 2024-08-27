@@ -12,11 +12,8 @@ public class ChappieEnabled implements BooleanSupplier {
 
     @Override
     public boolean getAsBoolean() {
-        if (chappieConfig.llm().isPresent()) {
-            if (chappieConfig.llm().get().equals(LLM.openai) && chappieConfig.openai().apiKey().isPresent()) {
-                return true;
-            }
-            // TODO: Add olama support
+        if (chappieConfig.llm().equals(LLM.openai) && chappieConfig.openai().apiKey().isPresent()) {
+            return true;
         }
         return false;
     }

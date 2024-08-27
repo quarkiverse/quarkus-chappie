@@ -16,7 +16,7 @@ public interface OpenAIConfig {
     /**
      * The Model to use
      */
-    @WithDefault("gpt-4-turbo")
+    @WithDefault("gpt-4o-mini")
     String modelName();
 
 }

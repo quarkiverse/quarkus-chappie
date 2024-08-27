@@ -1,7 +1,12 @@
 package io.quarkiverse.chappie.deployment;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 import io.quarkus.deployment.IsDevelopment;
@@ -49,7 +54,6 @@ class ChappieDevUIProcessor {
                         lastExceptionBuildItem.getLastException().set(lastException);
                     }
                 }));
-
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
@@ -63,41 +67,35 @@ class ChappieDevUIProcessor {
     }
 
     @BuildStep(onlyIfNot = ChappieEnabled.class)
-    void notenabled(BuildProducer<CardPageBuildItem> cardPageProducer) {
-        // TODO: Show guide on how to enable
+    void notenabled(BuildProducer<CardPageBuildItem> cardPageProducer, ChappieConfig config) {
+        CardPageBuildItem chappieCard = new CardPageBuildItem();
+
+        chappieCard.addBuildTimeData("llm", config.llm());
+        if (config.llm().equals(LLM.openai)) {
+            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
+            chappieCard.addPage(Page.webComponentPageBuilder()
+                    .icon("font-awesome-solid:circle-question")
+                    .title("Configure assistant")
+                    .componentLink("qwc-chappie-unconfigured.js"));
+        }
+        cardPageProducer.produce(chappieCard);
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
     void pages(BuildProducer<CardPageBuildItem> cardPageProducer,
             ChappieConfig config) {
-
         CardPageBuildItem chappieCard = new CardPageBuildItem();
+        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
 
-        //        if (config.llm().get().equals(LLM.ollama) && maybeOllamaBuildItem.isEmpty()) { // Ollama is not installed
-        //            chappieCard.addPage(Page.externalPageBuilder("Install Ollama")
-        //                    .icon("font-awesome-solid:download")
-        //                    .doNotEmbed(false)
-        //                    .url("https://ollama.com/download"));
-        //        }
-
-        if (config.llm().get().equals(LLM.openai)) {
+        chappieCard.addBuildTimeData("llm", config.llm());
+        if (config.llm().equals(LLM.openai)) {
+            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
             chappieCard.addPage(Page.webComponentPageBuilder()
                     .icon("font-awesome-solid:circle-question")
                     .title(EXCEPTION_TITLE)
                     .componentLink("qwc-chappie-exception.js"));
         }
-
-        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
-
-        chappieCard.addBuildTimeData("llm", config.llm().get());
-        if (config.llm().get().equals(LLM.openai)) {
-            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
-        } else if (config.llm().get().equals(LLM.ollama)) {
-            chappieCard.addBuildTimeData("modelName", config.ollama().modelName());
-        }
-
         cardPageProducer.produce(chappieCard);
-
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
@@ -106,6 +104,7 @@ class ChappieDevUIProcessor {
             ChappieClientBuildItem chappieClientBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
+            LastSolutionBuildItem lastSolutionBuildItem,
             ChappieConfig chappieConfig) {
 
         if (srcMainJava == null) {
@@ -134,14 +133,40 @@ class ChappieDevUIProcessor {
         buildItemActions.addAction("suggestFix", ignored -> {
             LastException lastException = lastExceptionBuildItem.getLastException().get();
             if (lastException != null) {
+                Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, lastException.stackTraceElement());
                 String sourceString = SourceCodeFinder.getSourceCode(srcMainJava, lastException.stackTraceElement());
                 String stacktraceString = lastException.getStackTraceString();
 
                 ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-
                 Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
+                CompletableFuture<Object> result = chappieClient.executeRPC("exception#suggestfix", params);
 
-                return chappieClient.executeRPC("exception#suggestfix", params);
+                result.thenApply(suggestedFix -> {
+                    lastSolutionBuildItem.getLastSolution().set(suggestedFix);
+                    lastSolutionBuildItem.getPath().set(sourcePath);
+                    return suggestedFix;
+                });
+
+                return result;
+            }
+            return null;
+        });
+
+        // This suggest fix based on exception and code
+        buildItemActions.addAction("applyFix", code -> {
+            Object lastSolution = lastSolutionBuildItem.getLastSolution().get();
+            Path path = lastSolutionBuildItem.getPath().get();
+            if (lastSolution != null && path != null) {
+                Map jsonRPCResponse = (Map) lastSolution;
+                if (jsonRPCResponse.containsKey("suggestedSource")) {
+                    String newCode = (String) jsonRPCResponse.get("suggestedSource");
+                    try {
+                        Files.writeString(path, newCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+                        return path.toString();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
             }
             return null;
         });
