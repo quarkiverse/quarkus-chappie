@@ -57,6 +57,35 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.0</version>
+                <executions>
+                    <execution>
+                        <id>copy</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <artifactItems>
+                        <artifactItem>
+                            <groupId>org.chappiebot</groupId>
+                            <artifactId>chappie-server</artifactId>
+                            <version>999-SNAPSHOT</version>
+                            <type>jar</type>
+                            <overWrite>false</overWrite>
+                            <outputDirectory>${project.build.directory}/classes/bin/</outputDirectory>
+                            <destFileName>chappie-server.jar</destFileName>
+                        </artifactItem>
+                    </artifactItems>
+                    <overWriteReleases>false</overWriteReleases>
+                    <overWriteSnapshots>true</overWriteSnapshots>
+                </configuration>
+            </plugin>
         </plugins>
         <extensions>
             <extension>

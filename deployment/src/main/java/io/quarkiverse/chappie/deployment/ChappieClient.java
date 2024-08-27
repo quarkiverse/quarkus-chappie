@@ -34,6 +34,10 @@ public class ChappieClient {
         return this.vertx;
     }
 
+    public boolean isConnected() {
+        return this.ws != null;
+    }
+
     public void connect() {
         if (this.ws == null) {
             URI jsonRpcUri = URI.create(jsonRpcBase + "/quarkus/json-rpc");
@@ -56,8 +60,12 @@ public class ChappieClient {
                                     }
                                 }
                             });
+                            this.ws.closeHandler((e) -> {
+                                System.out.println(">>>>>>>>>>>>> CLOSING !");
+                            });
                         } else {
-                            throw new IllegalStateException(r.cause());
+                            // Just try again.
+                            connect();
                         }
                     });
         } else {

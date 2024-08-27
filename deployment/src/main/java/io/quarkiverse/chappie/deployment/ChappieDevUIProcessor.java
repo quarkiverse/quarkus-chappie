@@ -49,7 +49,6 @@ class ChappieDevUIProcessor {
                         lastExceptionBuildItem.getLastException().set(lastException);
                     }
                 }));
-
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
@@ -63,41 +62,35 @@ class ChappieDevUIProcessor {
     }
 
     @BuildStep(onlyIfNot = ChappieEnabled.class)
-    void notenabled(BuildProducer<CardPageBuildItem> cardPageProducer) {
-        // TODO: Show guide on how to enable
+    void notenabled(BuildProducer<CardPageBuildItem> cardPageProducer, ChappieConfig config) {
+        CardPageBuildItem chappieCard = new CardPageBuildItem();
+
+        chappieCard.addBuildTimeData("llm", config.llm());
+        if (config.llm().equals(LLM.openai)) {
+            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
+            chappieCard.addPage(Page.webComponentPageBuilder()
+                    .icon("font-awesome-solid:circle-question")
+                    .title("Configure assistant")
+                    .componentLink("qwc-chappie-unconfigured.js"));
+        }
+        cardPageProducer.produce(chappieCard);
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
     void pages(BuildProducer<CardPageBuildItem> cardPageProducer,
             ChappieConfig config) {
-
         CardPageBuildItem chappieCard = new CardPageBuildItem();
+        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
 
-        //        if (config.llm().get().equals(LLM.ollama) && maybeOllamaBuildItem.isEmpty()) { // Ollama is not installed
-        //            chappieCard.addPage(Page.externalPageBuilder("Install Ollama")
-        //                    .icon("font-awesome-solid:download")
-        //                    .doNotEmbed(false)
-        //                    .url("https://ollama.com/download"));
-        //        }
-
-        if (config.llm().get().equals(LLM.openai)) {
+        chappieCard.addBuildTimeData("llm", config.llm());
+        if (config.llm().equals(LLM.openai)) {
+            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
             chappieCard.addPage(Page.webComponentPageBuilder()
                     .icon("font-awesome-solid:circle-question")
                     .title(EXCEPTION_TITLE)
                     .componentLink("qwc-chappie-exception.js"));
         }
-
-        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
-
-        chappieCard.addBuildTimeData("llm", config.llm().get());
-        if (config.llm().get().equals(LLM.openai)) {
-            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
-        } else if (config.llm().get().equals(LLM.ollama)) {
-            chappieCard.addBuildTimeData("modelName", config.ollama().modelName());
-        }
-
         cardPageProducer.produce(chappieCard);
-
     }
 
     @BuildStep(onlyIf = ChappieEnabled.class)
@@ -138,7 +131,6 @@ class ChappieDevUIProcessor {
                 String stacktraceString = lastException.getStackTraceString();
 
                 ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-
                 Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
 
                 return chappieClient.executeRPC("exception#suggestfix", params);

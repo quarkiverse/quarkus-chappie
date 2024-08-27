@@ -1,35 +1,28 @@
 package io.quarkiverse.chappie.deployment;
 
-import java.util.Optional;
-
 import io.quarkiverse.chappie.deployment.devservices.DevServicesConfig;
-import io.quarkiverse.chappie.deployment.ollama.OllamaConfig;
 import io.quarkiverse.chappie.deployment.openai.OpenAIConfig;
 import io.quarkus.runtime.annotations.ConfigDocSection;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "quarkus.assistant")
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
 public interface ChappieConfig {
 
     /**
-     * The LLM to use, example, openai, ollama
+     * The LLM to use, for now we only support openai
      */
-    Optional<LLM> llm();
+    @WithDefault("openai")
+    LLM llm();
 
     /**
      * OpenAI config
      */
     @ConfigDocSection
     OpenAIConfig openai();
-
-    /**
-     * Ollama config
-     */
-    @ConfigDocSection
-    OllamaConfig ollama();
 
     /**
      * Dev Services

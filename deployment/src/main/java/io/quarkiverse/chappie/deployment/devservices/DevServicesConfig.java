@@ -15,15 +15,9 @@ public interface DevServicesConfig {
     Optional<Integer> port();
 
     /**
-     * The image to use
-     */
-    @WithDefault("chappie/chappie-server")
-    String imageName();
-
-    /**
      * The version to use
      */
-    @WithDefault("latest")
+    @WithDefault("0.0.6")
     String version();
 
     /**

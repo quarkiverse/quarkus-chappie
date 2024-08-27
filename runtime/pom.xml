@@ -10,60 +10,11 @@
     <artifactId>quarkus-chappie</artifactId>
     <name>Quarkus Chappie - Runtime</name>
 
-    
-
-<!--    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-bom</artifactId>
-                <version>${langchain4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>-->
-
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
-        <!-- To do AI -->
-<!--        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.squareup.retrofit2</groupId>
-                    <artifactId>retrofit</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.okhttp3</groupId>
-                    <artifactId>okhttp</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.code.gson</groupId>
-                    <artifactId>gson</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.retrofit2</groupId>
-                    <artifactId>converter-gson</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.okhttp3</groupId>
-                    <artifactId>okhttp-sse</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.spullara.mustache.java</groupId>
-                    <artifactId>compiler</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>-->
         
         <!-- To bind to object -->
         <dependency>
