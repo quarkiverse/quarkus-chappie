@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.devservice;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -61,7 +61,8 @@ public class ChappieClient {
                                 }
                             });
                             this.ws.closeHandler((e) -> {
-                                // TODO: Possibly needs to reconnect ?
+                                // Reconnect
+                                connect();
                             });
                         } else {
                             // Just try again.

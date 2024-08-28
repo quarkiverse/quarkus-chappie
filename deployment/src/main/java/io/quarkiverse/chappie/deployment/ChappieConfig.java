@@ -1,7 +1,8 @@
 package io.quarkiverse.chappie.deployment;
 
-import io.quarkiverse.chappie.deployment.devservices.DevServicesConfig;
-import io.quarkiverse.chappie.deployment.openai.OpenAIConfig;
+import io.quarkiverse.chappie.deployment.devservice.DevServicesConfig;
+import io.quarkiverse.chappie.deployment.devservice.LLM;
+import io.quarkiverse.chappie.deployment.devservice.OpenAIConfig;
 import io.quarkus.runtime.annotations.ConfigDocSection;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;

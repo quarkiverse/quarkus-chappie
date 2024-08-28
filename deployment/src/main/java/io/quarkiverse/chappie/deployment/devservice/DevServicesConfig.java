@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.devservices;
+package io.quarkiverse.chappie.deployment.devservice;
 
 import java.net.URL;
 import java.util.Optional;

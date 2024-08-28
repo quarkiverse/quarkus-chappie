@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

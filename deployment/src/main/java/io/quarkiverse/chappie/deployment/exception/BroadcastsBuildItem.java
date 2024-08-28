@@ -1,11 +1,11 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.util.concurrent.Flow;
 
 import io.quarkus.builder.item.SimpleBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
-final class BroadcastsBuildItem extends SimpleBuildItem {
+public final class BroadcastsBuildItem extends SimpleBuildItem {
 
     private final BroadcastProcessor<LastException> lastExceptionBroadcastProcessor;
 

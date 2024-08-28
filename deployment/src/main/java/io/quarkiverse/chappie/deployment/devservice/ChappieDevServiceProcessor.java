@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.devservices;
+package io.quarkiverse.chappie.deployment.devservice;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,12 +19,9 @@ import java.util.Scanner;
 import org.jboss.logging.Logger;
 import org.yaml.snakeyaml.Yaml;
 
-import io.quarkiverse.chappie.deployment.ChappieClient;
-import io.quarkiverse.chappie.deployment.ChappieClientBuildItem;
 import io.quarkiverse.chappie.deployment.ChappieConfig;
 import io.quarkiverse.chappie.deployment.ChappieEnabled;
 import io.quarkiverse.chappie.deployment.Feature;
-import io.quarkiverse.chappie.deployment.LLM;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
