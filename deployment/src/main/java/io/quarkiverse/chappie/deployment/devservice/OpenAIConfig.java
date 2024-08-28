@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.openai;
+package io.quarkiverse.chappie.deployment.devservice;
 
 import java.util.Optional;
 

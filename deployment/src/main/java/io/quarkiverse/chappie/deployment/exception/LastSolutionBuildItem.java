@@ -1,11 +1,11 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.quarkus.builder.item.SimpleBuildItem;
 
-final class LastSolutionBuildItem extends SimpleBuildItem {
+public final class LastSolutionBuildItem extends SimpleBuildItem {
     private final AtomicReference<Object> lastSolution;
     private final AtomicReference<Path> path;
 

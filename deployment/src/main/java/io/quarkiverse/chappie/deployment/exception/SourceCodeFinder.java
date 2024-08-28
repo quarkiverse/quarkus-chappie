@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,5 +37,4 @@ public class SourceCodeFinder {
         }
         return null;
     }
-
 }

@@ -1,11 +1,14 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import io.quarkiverse.chappie.deployment.ChappieEnabled;
+import io.quarkiverse.chappie.deployment.Feature;
+import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
+import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
@@ -23,25 +26,12 @@ import io.vertx.core.Vertx;
  *
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
-@BuildSteps(onlyIf = IsDevelopment.class)
-class ChappieProcessor {
+@BuildSteps(onlyIf = { IsDevelopment.class, ChappieEnabled.class })
+class ConsoleProcessor {
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
 
-    @BuildStep
-    LastExceptionBuildItem createLastExceptionReference() {
-        final AtomicReference<LastException> lastException = new AtomicReference<>();
-        return new LastExceptionBuildItem(lastException);
-    }
-
-    @BuildStep
-    LastSolutionBuildItem createLastSolutionReference() {
-        final AtomicReference<Object> lastSuggestedFix = new AtomicReference<>();
-        final AtomicReference<Path> path = new AtomicReference<>();
-        return new LastSolutionBuildItem(lastSuggestedFix, path);
-    }
-
     @Consume(ConsoleInstalledBuildItem.class)
-    @BuildStep(onlyIf = ChappieEnabled.class)
+    @BuildStep
     FeatureBuildItem setupConsole(LastExceptionBuildItem lastExceptionBuildItem,
             ChappieClientBuildItem chappieClientBuildItem,
             LoggingDecorateBuildItem loggingDecorateBuildItem) {

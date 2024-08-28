@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.devservice;
 
 /**
  * Contains the supported LLMs

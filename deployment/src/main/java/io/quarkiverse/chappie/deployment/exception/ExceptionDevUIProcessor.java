@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,6 +9,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
+import io.quarkiverse.chappie.deployment.ChappieConfig;
+import io.quarkiverse.chappie.deployment.ChappieEnabled;
+import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
+import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
+import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -18,28 +23,27 @@ import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
-import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
 import io.quarkus.runtime.logging.DecorateStackUtil;
 import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
 import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
-@BuildSteps(onlyIf = IsDevelopment.class)
-class ChappieDevUIProcessor {
+@BuildSteps(onlyIf = { IsDevelopment.class, ChappieEnabled.class })
+class ExceptionDevUIProcessor {
     private static final String EXCEPTION_TITLE = "Help with the latest exception";
 
     static volatile Path srcMainJava;
     static volatile List<String> knownClasses;
 
-    @BuildStep(onlyIf = ChappieEnabled.class)
+    @BuildStep
     void createBroadcasters(BuildProducer<BroadcastsBuildItem> broadcastsProducer) {
         BroadcastProcessor<LastException> leb = BroadcastProcessor.create();
         broadcastsProducer.produce(new BroadcastsBuildItem(leb));
     }
 
     @Consume(ConsoleInstalledBuildItem.class)
-    @BuildStep(onlyIf = ChappieEnabled.class)
+    @BuildStep
     void setupBroadcaster(BuildProducer<ExceptionNotificationBuildItem> exceptionNotificationProducer,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem) {
@@ -56,56 +60,33 @@ class ChappieDevUIProcessor {
                 }));
     }
 
-    @BuildStep(onlyIf = ChappieEnabled.class)
+    @BuildStep
     void addActionToErrorPage(BuildProducer<ErrorPageActionsBuildItem> errorPageActionsProducer,
             NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
 
         String url = nonApplicationRootPathBuildItem.resolvePath(
                 "dev-ui/io.quarkiverse.chappie.quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
-        errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url));
+        errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url + "?autoSuggest=true"));
 
     }
 
-    @BuildStep(onlyIfNot = ChappieEnabled.class)
-    void notenabled(BuildProducer<CardPageBuildItem> cardPageProducer, ChappieConfig config) {
-        CardPageBuildItem chappieCard = new CardPageBuildItem();
-
-        chappieCard.addBuildTimeData("llm", config.llm());
-        if (config.llm().equals(LLM.openai)) {
-            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
-            chappieCard.addPage(Page.webComponentPageBuilder()
-                    .icon("font-awesome-solid:circle-question")
-                    .title("Configure assistant")
-                    .componentLink("qwc-chappie-unconfigured.js"));
-        }
-        cardPageProducer.produce(chappieCard);
-    }
-
-    @BuildStep(onlyIf = ChappieEnabled.class)
-    void pages(BuildProducer<CardPageBuildItem> cardPageProducer,
+    @BuildStep
+    void exceptionPage(BuildProducer<ChappiePageBuildItem> chappiePageBuildItem,
             ChappieConfig config) {
-        CardPageBuildItem chappieCard = new CardPageBuildItem();
-        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
 
-        chappieCard.addBuildTimeData("llm", config.llm());
-        if (config.llm().equals(LLM.openai)) {
-            chappieCard.addBuildTimeData("modelName", config.openai().modelName());
-            chappieCard.addPage(Page.webComponentPageBuilder()
-                    .icon("font-awesome-solid:circle-question")
-                    .title(EXCEPTION_TITLE)
-                    .componentLink("qwc-chappie-exception.js"));
-        }
-        cardPageProducer.produce(chappieCard);
+        chappiePageBuildItem.produce(new ChappiePageBuildItem(Page.webComponentPageBuilder()
+                .icon("font-awesome-solid:bug")
+                .title(EXCEPTION_TITLE)
+                .componentLink("qwc-chappie-exception.js")));
     }
 
-    @BuildStep(onlyIf = ChappieEnabled.class)
+    @BuildStep
     void createBuildTimeActions(BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
             ChappieClientBuildItem chappieClientBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
-            LastSolutionBuildItem lastSolutionBuildItem,
-            ChappieConfig chappieConfig) {
+            LastSolutionBuildItem lastSolutionBuildItem) {
 
         if (srcMainJava == null) {
             srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
