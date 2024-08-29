@@ -31,7 +31,6 @@ export class QwcChappieExplanation extends observeState(LitElement) {
         .fix {
             display: flex;
             flex-direction: column;
-            height: 100%;
             padding-top: 20px;
         }
         .heading-fix {
@@ -45,7 +44,6 @@ export class QwcChappieExplanation extends observeState(LitElement) {
         .selectedSource {
             display: flex;
             width: 100%;
-            height: 100%;
         }
         .selectedSource vaadin-button{
             position: absolute;
@@ -56,7 +54,6 @@ export class QwcChappieExplanation extends observeState(LitElement) {
             display: flex;
             flex-direction: column;
             width: 100%;
-            height: 100%
         }
     `;
     

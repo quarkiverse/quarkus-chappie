@@ -11,9 +11,9 @@ import { notifier } from 'notifier';
 import { devuiState } from 'devui-state';
 
 /**
- * This component shows the test creation page
+ * This component shows the add javadoc page
  */
-export class QwcChappieTesting extends observeState(LitElement) { 
+export class QwcChappieJavaDoc extends observeState(LitElement) { 
     jsonRpc = new JsonRpc(this);
 
     static styles = css`
@@ -65,7 +65,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
     
     static properties = {
         _knownClasses: {state: true},
-        _suggestedTestSource: {state: true},
+        _sourceWithJavaDoc: {state: true},
         _showProgressBar: {state: true},
         _selectedSource: {state: true},
         _selectedClass: {state: true}
@@ -76,7 +76,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
         this._knownClasses = null;
         this._selectedSource = null;
         this._selectedClass = null;
-        this._suggestedTestSource = null;
+        this._sourceWithJavaDoc = null;
         this._showProgressBar = false;
     }
 
@@ -95,7 +95,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
             return html`${this._renderKnownClasses()}
                         <div class="code">
                             ${this._renderSelectedSource()}
-                            ${this._renderSuggestion()}
+                            ${this._renderNewSource()}
                         </div>
                         `;
         } else {
@@ -116,7 +116,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
     _renderSelectedSource(){
         if(this._selectedSource){
             return html`<div class="selectedSource">
-                            ${this._renderCreateTestButton()}
+                            ${this._renderAddButton()}
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
@@ -130,13 +130,13 @@ export class QwcChappieTesting extends observeState(LitElement) {
     
     
     
-    _renderCreateTestButton(){
-        if(!this._suggestedTestSource){
-            return html`<vaadin-button theme="primary small" @click="${this._createTestSource}">Create test class</vaadin-button>`;
+    _renderAddButton(){
+        if(!this._sourceWithJavaDoc){
+            return html`<vaadin-button theme="primary small" @click="${this._addJavaDocSource}">Add JavaDoc</vaadin-button>`;
         }
     }
     
-    _renderSuggestion(){
+    _renderNewSource(){
         if(this._showProgressBar){
             return html`<div class="fix">
                             <label class="text-secondary" id="pblbl">Talking to AI...</label>
@@ -149,24 +149,22 @@ export class QwcChappieTesting extends observeState(LitElement) {
                                 This can take a while, please hold
                             </span>
                         </div>`;
-        }else if(this._suggestedTestSource){
+        }else if(this._sourceWithJavaDoc){
             return html`<div class="fix">
                             <span class="heading-fix">
-                                Suggested test class from AI
+                                Suggested JavaDoc from AI
                             </span>
 
-                            <p>${this._suggestedTestSource.explanation}</p>
-                            
                             <div class="codeBlockHeader">
-                                <h4>Suggested test code:</h4>
-                                <vaadin-button theme="primary small" @click="${this._saveTestSource}">Save this to your project</vaadin-button>
+                                <h4>Source code with JavaDoc:</h4>
+                                <vaadin-button theme="primary small" @click="${this._saveNewSource}">Save this to your project</vaadin-button>
                             </div>
                             
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
                                     theme='${themeState.theme.name}'>
-                                    <slot>${this._suggestedTestSource.suggestedTestSource}</slot>
+                                    <slot>${this._sourceWithJavaDoc}</slot>
                                 </qui-code-block>
                             </div>
                             
@@ -177,7 +175,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
     _onSelectionChanged(event) {
         this._selectedSource = null;
         this._selectedClass = null;
-        this._suggestedTestSource = null;
+        this._sourceWithJavaDoc = null;
         const listBox = event.target;
         
         if(listBox && listBox.items){
@@ -199,27 +197,28 @@ export class QwcChappieTesting extends observeState(LitElement) {
         // Get the current list of know classes
         this.jsonRpc.getKnownClasses().then(jsonRpcResponse => { 
             this._knownClasses = jsonRpcResponse.result;
-            this._suggestedTestSource = null;
+            this._sourceWithJavaDoc = null;
+            this._selectedSource = null;
             if(this._knownClasses && this._knownClasses.length>0){
                 this._selectClass(this._knownClasses[0]);
             }
         });
     }
     
-    _createTestSource(){
+    _addJavaDocSource(){
         this._showProgressBar = true;
-        this.jsonRpc.suggestTestClass({className:this._selectedClass}).then(jsonRpcResponse => { 
+        this.jsonRpc.addJavaDoc({className:this._selectedClass}).then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._suggestedTestSource = jsonRpcResponse.result;
+            this._sourceWithJavaDoc = jsonRpcResponse.result;
         });
     }
     
-    _saveTestSource(){
-        this.jsonRpc.saveSuggestion().then(jsonRpcResponse => { 
+    _saveNewSource(){
+        this.jsonRpc.save().then(jsonRpcResponse => { 
             fetch(devuiState.applicationInfo.contextRoot);
             notifier.showInfoMessage("Updated " + jsonRpcResponse.result);
         });
     }
     
 }
-customElements.define('qwc-chappie-testing', QwcChappieTesting);
+customElements.define('qwc-chappie-javadoc', QwcChappieJavaDoc);
