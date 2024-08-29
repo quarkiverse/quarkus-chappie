@@ -9,9 +9,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-import io.quarkiverse.chappie.deployment.ChappieConfig;
 import io.quarkiverse.chappie.deployment.ChappieEnabled;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
+import io.quarkiverse.chappie.deployment.ParameterCreator;
+import io.quarkiverse.chappie.deployment.SourceCodeFinder;
 import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
 import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
@@ -71,8 +72,7 @@ class ExceptionDevUIProcessor {
     }
 
     @BuildStep
-    void exceptionPage(BuildProducer<ChappiePageBuildItem> chappiePageBuildItem,
-            ChappieConfig config) {
+    void exceptionPage(BuildProducer<ChappiePageBuildItem> chappiePageBuildItem) {
 
         chappiePageBuildItem.produce(new ChappiePageBuildItem(Page.webComponentPageBuilder()
                 .icon("font-awesome-solid:bug")
@@ -119,7 +119,7 @@ class ExceptionDevUIProcessor {
                 String stacktraceString = lastException.getStackTraceString();
 
                 ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
+                Object[] params = ParameterCreator.getParameters("", stacktraceString, sourceString);
                 CompletableFuture<Object> result = chappieClient.executeRPC("exception#suggestfix", params);
 
                 result.thenApply(suggestedFix -> {

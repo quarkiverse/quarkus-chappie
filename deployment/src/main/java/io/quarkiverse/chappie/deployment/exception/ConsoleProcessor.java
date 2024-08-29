@@ -7,6 +7,8 @@ import java.util.function.Supplier;
 
 import io.quarkiverse.chappie.deployment.ChappieEnabled;
 import io.quarkiverse.chappie.deployment.Feature;
+import io.quarkiverse.chappie.deployment.ParameterCreator;
+import io.quarkiverse.chappie.deployment.SourceCodeFinder;
 import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
 import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
@@ -78,7 +80,7 @@ class ConsoleProcessor {
                                 long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
                                 ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                                Object[] params = ParameterCreator.forExceptionHelp(stacktraceString, sourceString);
+                                Object[] params = ParameterCreator.getParameters("", stacktraceString, sourceString);
 
                                 CompletableFuture<Object> futureResult = chappieClient.executeRPC("exception#suggestfix",
                                         params);
