@@ -1,5 +1,7 @@
 import { LitElement, html, css} from 'lit'; 
 import { JsonRpc } from 'jsonrpc';
+import MarkdownIt from 'markdown-it';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import '@vaadin/button';
 import '@vaadin/progress-bar';
 import '@vaadin/item';
@@ -7,13 +9,11 @@ import '@vaadin/list-box';
 import '@qomponent/qui-code-block';
 import { observeState } from 'lit-element-state';
 import { themeState } from 'theme-state';
-import { notifier } from 'notifier';
-import { devuiState } from 'devui-state';
 
 /**
- * This component shows the test creation page
+ * This component shows the explanation page
  */
-export class QwcChappieTesting extends observeState(LitElement) { 
+export class QwcChappieExplanation extends observeState(LitElement) { 
     jsonRpc = new JsonRpc(this);
 
     static styles = css`
@@ -37,12 +37,6 @@ export class QwcChappieTesting extends observeState(LitElement) {
         .heading-fix {
             color: var(--lumo-success-color);
             font-size: x-large; 
-        }
-        .codeBlockHeader {
-            display: flex;
-            width: 100%;
-            justify-content: space-between;
-            align-items: baseline;
         }
         .codeBlock {
             width: 100%;
@@ -68,7 +62,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
     
     static properties = {
         _knownClasses: {state: true},
-        _suggestedTestSource: {state: true},
+        _explanation: {state: true},
         _showProgressBar: {state: true},
         _selectedSource: {state: true},
         _selectedClass: {state: true}
@@ -76,10 +70,11 @@ export class QwcChappieTesting extends observeState(LitElement) {
 
     constructor() { 
         super();
+        this.md = new MarkdownIt();
         this._knownClasses = null;
         this._selectedSource = null;
         this._selectedClass = null;
-        this._suggestedTestSource = null;
+        this._explanation = null;
         this._showProgressBar = false;
     }
 
@@ -98,7 +93,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
             return html`${this._renderKnownClasses()}
                         <div class="code">
                             ${this._renderSelectedSource()}
-                            ${this._renderSuggestion()}
+                            ${this._renderExplanation()}
                         </div>
                         `;
         } else {
@@ -119,7 +114,7 @@ export class QwcChappieTesting extends observeState(LitElement) {
     _renderSelectedSource(){
         if(this._selectedSource){
             return html`<div class="selectedSource">
-                            ${this._renderCreateTestButton()}
+                            ${this._renderExplainButton()}
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
@@ -133,13 +128,13 @@ export class QwcChappieTesting extends observeState(LitElement) {
     
     
     
-    _renderCreateTestButton(){
-        if(!this._suggestedTestSource){
-            return html`<vaadin-button theme="primary small" @click="${this._createTestSource}">Create test class</vaadin-button>`;
+    _renderExplainButton(){
+        if(!this._explanation){
+            return html`<vaadin-button theme="primary small" @click="${this._explainSource}">Explain this class</vaadin-button>`;
         }
     }
     
-    _renderSuggestion(){
+    _renderExplanation(){
         if(this._showProgressBar){
             return html`<div class="fix">
                             <label class="text-secondary" id="pblbl">Talking to AI...</label>
@@ -152,27 +147,13 @@ export class QwcChappieTesting extends observeState(LitElement) {
                                 This can take a while, please hold
                             </span>
                         </div>`;
-        }else if(this._suggestedTestSource){
+        }else if(this._explanation){
+            const htmlContent = this.md.render(this._explanation);
             return html`<div class="fix">
                             <span class="heading-fix">
-                                Suggested test class from AI
+                                Explanation from AI
                             </span>
-
-                            <p>${this._suggestedTestSource.explanation}</p>
-                            
-                            <div class="codeBlockHeader">
-                                <h4>Suggested test code:</h4>
-                                <vaadin-button theme="primary small" @click="${this._saveTestSource}">Save this to your project</vaadin-button>
-                            </div>
-                            
-                            <div class="codeBlock">
-                                <qui-code-block
-                                    mode='java'
-                                    theme='${themeState.theme.name}'>
-                                    <slot>${this._suggestedTestSource.suggestedTestSource}</slot>
-                                </qui-code-block>
-                            </div>
-                            
+                            <div class="readme">${unsafeHTML(htmlContent)}</div>
                         </div>`;
         }
     }
@@ -180,10 +161,10 @@ export class QwcChappieTesting extends observeState(LitElement) {
     _onSelectionChanged(event) {
         this._selectedSource = null;
         this._selectedClass = null;
-        this._suggestedTestSource = null;
+        this._explanation = null;
         const listBox = event.target;
         
-        if(listBox){
+        if(listBox && listBox.items){
             const selectedItem = listBox.items[listBox.selected];
             const className = selectedItem.value;
             this._selectClass(className);
@@ -202,27 +183,20 @@ export class QwcChappieTesting extends observeState(LitElement) {
         // Get the current list of know classes
         this.jsonRpc.getKnownClasses().then(jsonRpcResponse => { 
             this._knownClasses = jsonRpcResponse.result;
-            this._suggestedTestSource = null;
+            this._explanation = null;
             if(this._knownClasses && this._knownClasses.length>0){
                 this._selectClass(this._knownClasses[0]);
             }
         });
     }
     
-    _createTestSource(){
+    _explainSource(){
         this._showProgressBar = true;
-        this.jsonRpc.suggestTestClass({className:this._selectedClass}).then(jsonRpcResponse => { 
+        this.jsonRpc.explainClass({className:this._selectedClass}).then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._suggestedTestSource = jsonRpcResponse.result;
-        });
-    }
-    
-    _saveTestSource(){
-        this.jsonRpc.saveSuggestion().then(jsonRpcResponse => { 
-            fetch(devuiState.applicationInfo.contextRoot);
-            notifier.showInfoMessage("Updated " + jsonRpcResponse.result);
+            this._explanation = jsonRpcResponse.result;
         });
     }
     
 }
-customElements.define('qwc-chappie-testing', QwcChappieTesting);
+customElements.define('qwc-chappie-explanation', QwcChappieExplanation);
