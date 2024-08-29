@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.testing;
+package io.quarkiverse.chappie.deployment.javadoc;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,31 +24,31 @@ import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
 
 @BuildSteps(onlyIf = { IsDevelopment.class, ChappieEnabled.class })
-class TestingDevUIProcessor {
-    private static final String TESTING_TITLE = "Create tests for your source";
+class JavaDocDevUIProcessor {
+    private static final String JAVADOC_TITLE = "Create javadoc for your source";
 
     static volatile Path srcMainJava;
     static volatile List<String> knownClasses;
 
     @BuildStep
-    LastTestClassBuildItem createLastTestClassReference() {
+    LastJavaDocBuildItem createLastJavaDocReference() {
         final AtomicReference<Object> lastResponse = new AtomicReference<>();
         final AtomicReference<Path> path = new AtomicReference<>();
-        return new LastTestClassBuildItem(lastResponse, path);
+        return new LastJavaDocBuildItem(lastResponse, path);
     }
 
     @BuildStep
-    void testingPage(BuildProducer<ChappiePageBuildItem> chappiePageBuildItem) {
+    void javaDocPage(BuildProducer<ChappiePageBuildItem> chappiePageBuildItem) {
         chappiePageBuildItem.produce(new ChappiePageBuildItem(Page.webComponentPageBuilder()
-                .icon("font-awesome-solid:flask-vial")
-                .title(TESTING_TITLE)
-                .componentLink("qwc-chappie-testing.js")));
+                .icon("font-awesome-solid:book")
+                .title(JAVADOC_TITLE)
+                .componentLink("qwc-chappie-javadoc.js")));
     }
 
     @BuildStep
     void createBuildTimeActions(BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
-            LastTestClassBuildItem lastTestClassBuildItem,
+            LastJavaDocBuildItem lastJavaDocBuildItem,
             ChappieClientBuildItem chappieClientBuildItem) {
 
         if (srcMainJava == null) {
@@ -72,7 +72,7 @@ class TestingDevUIProcessor {
             return null;
         });
 
-        buildItemActions.addAction("suggestTestClass", (Map<String, String> param) -> {
+        buildItemActions.addAction("addJavaDoc", (Map<String, String> param) -> {
             if (param.containsKey("className")) {
                 String className = param.get("className");
 
@@ -82,14 +82,13 @@ class TestingDevUIProcessor {
                 if (sourceCode != null) {
 
                     ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                    Object[] params = ParameterCreator.getParameters(
-                            "Make sure to NOT create a NativeTest, but a normal Quarkus Unit test", sourceCode);
-                    CompletableFuture<Object> result = chappieClient.executeRPC("testing#suggesttest", params);
+                    Object[] params = ParameterCreator.getParameters("", "JavaDoc", sourceCode);
+                    CompletableFuture<Object> result = chappieClient.executeRPC("doc#addDoc", params);
 
-                    result.thenApply(suggestedTestClass -> {
-                        lastTestClassBuildItem.getLastResponse().set(suggestedTestClass);
-                        lastTestClassBuildItem.getPath().set(sourcePath);
-                        return suggestedTestClass;
+                    result.thenApply(classWithJavaDoc -> {
+                        lastJavaDocBuildItem.getLastResponse().set(classWithJavaDoc);
+                        lastJavaDocBuildItem.getPath().set(sourcePath);
+                        return classWithJavaDoc;
                     });
                     return result;
                 }
@@ -97,33 +96,23 @@ class TestingDevUIProcessor {
             return null;
         });
 
-        buildItemActions.addAction("saveSuggestion", ignored -> {
-            Map m = (Map) lastTestClassBuildItem.getLastResponse().get();
-            Path srcPath = lastTestClassBuildItem.getPath().get();
-
-            String sourceCode = (String) m.get("suggestedTestSource");
-            Path testPath = createTestPath(srcPath);
+        buildItemActions.addAction("save", ignored -> {
+            String sourceCode = (String) lastJavaDocBuildItem.getLastResponse().get();
+            Path srcPath = lastJavaDocBuildItem.getPath().get();
 
             try {
-                Files.createDirectories(testPath.getParent());
-                if (!Files.exists(testPath))
-                    Files.createFile(testPath);
-                Files.writeString(testPath, sourceCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+                Files.createDirectories(srcPath.getParent());
+                if (!Files.exists(srcPath))
+                    Files.createFile(srcPath);
+                Files.writeString(srcPath, sourceCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
 
-            return testPath;
+            return srcPath;
         });
 
         buildTimeActionProducer.produce(buildItemActions);
     }
 
-    private Path createTestPath(Path srcPath) {
-        String s = srcPath.toString();
-        s = s.replace("/main/", "/test/");
-        s = s.substring(0, s.length() - 5);
-        s = s + "Test.java";
-        return Path.of(s);
-    }
 }
