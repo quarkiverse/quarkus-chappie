@@ -193,7 +193,23 @@ export class QwcChappieExplanation extends observeState(LitElement) {
             this._showProgressBar = false;
             this._explanation = jsonRpcResponse.result;
         });
+        this._scrollToBottom();
     }
     
+    async _scrollToBottom(){
+        
+        await this.updateComplete;
+
+        const last = Array.from(
+            this.shadowRoot.querySelectorAll('.fix')
+        ).pop();
+
+        if(last){
+            last.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+            });
+        }    
+    }
 }
 customElements.define('qwc-chappie-explanation', QwcChappieExplanation);

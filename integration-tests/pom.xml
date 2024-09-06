@@ -16,10 +16,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-resteasy-reactive</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkiverse.chappie</groupId>
             <artifactId>quarkus-chappie</artifactId>
             <version>${project.version}</version>

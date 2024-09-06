@@ -218,6 +218,7 @@ export class QwcChappieException extends observeState(LitElement) {
             this._showProgressBar = false;
             this._suggestedFix = jsonRpcResponse.result;
         });
+        this._scrollToBottom();
     }
     
     _applyFix(){
@@ -227,5 +228,20 @@ export class QwcChappieException extends observeState(LitElement) {
         });
     }
     
+    async _scrollToBottom(){
+        
+        await this.updateComplete;
+
+        const last = Array.from(
+            this.shadowRoot.querySelectorAll('.fix')
+        ).pop();
+
+        if(last){
+            last.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+            });
+        }    
+    }
 }
 customElements.define('qwc-chappie-exception', QwcChappieException);

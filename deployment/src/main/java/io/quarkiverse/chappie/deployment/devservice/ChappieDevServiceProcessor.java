@@ -14,14 +14,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 
 import org.jboss.logging.Logger;
 import org.yaml.snakeyaml.Yaml;
 
 import io.quarkiverse.chappie.deployment.ChappieConfig;
-import io.quarkiverse.chappie.deployment.ChappieEnabled;
 import io.quarkiverse.chappie.deployment.Feature;
+import io.quarkiverse.chappie.deployment.devservice.ollama.OllamaBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -30,7 +31,7 @@ import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
 import io.quarkus.deployment.dev.devservices.GlobalDevServicesConfig;
 import io.quarkus.runtime.util.ClassPathUtils;
 
-@BuildSteps(onlyIf = { IsDevelopment.class, ChappieEnabled.class, GlobalDevServicesConfig.Enabled.class })
+@BuildSteps(onlyIf = { IsDevelopment.class, GlobalDevServicesConfig.Enabled.class })
 public class ChappieDevServiceProcessor {
     private static Process process;
     private static ChappieClient chappieClient;
@@ -40,9 +41,10 @@ public class ChappieDevServiceProcessor {
     public void createContainer(BuildProducer<DevServicesResultBuildItem> devServicesResultProducer,
             BuildProducer<ChappieClientBuildItem> chappieClientProducer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
+            Optional<OllamaBuildItem> ollamaBuildItem,
             ChappieConfig config) {
 
-        if (process == null) {
+        if (process == null && (config.openai().apiKey().isPresent() || ollamaBuildItem.isPresent())) {
 
             Map<String, String> properties = new HashMap<>();
             int port = findAvailablePort(4315);
@@ -51,13 +53,16 @@ public class ChappieDevServiceProcessor {
 
             properties.put("quarkus.http.host", "localhost");
             properties.put("quarkus.http.port", String.valueOf(port));
-            if (config.llm().equals(LLM.openai)) {
-                properties.put("quarkus.langchain4j.chat-model.provider", "openai");
-                properties.put("quarkus.langchain4j.openai.api-key", config.openai().apiKey().get());
-                properties.put("quarkus.langchain4j.openai.chat-model.model-name", config.openai().modelName());
-                properties.put("quarkus.langchain4j.openai.enable-integration", "true");
+
+            if (config.openai().apiKey().isPresent()) {
+                properties.put("chappie.openai.api-key", config.openai().apiKey().get());
+                properties.put("chappie.openai.model-name", config.openai().modelName());
+            } else if (ollamaBuildItem.isPresent()) {
+                properties.put("chappie.ollama.base-url", ollamaBuildItem.get().getUrl());
+                properties.put("chappie.ollama.model-name", config.ollama().modelName());
+                properties.put("chappie.ollama.timeout", config.ollama().timeout());
+
             }
-            // TODO: Ollama
 
             String extVersion = extensionVersionBuildItem.getVersion();
             if (!chappieServerExists(extVersion) || extVersion.endsWith(SNAPSHOT)) {
@@ -65,7 +70,7 @@ public class ChappieDevServiceProcessor {
             }
 
             try {
-                runServer(extVersion, properties);
+                runServer(extVersion, properties, config.devservices().log());
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     if (process != null && process.isAlive()) {
                         process.destroy();
@@ -89,7 +94,6 @@ public class ChappieDevServiceProcessor {
             chappieClient = new ChappieClient(jsonRpcBase);
             chappieClient.connect();
         }
-        // TODO: Reconnect ?
 
         chappieClientProducer.produce(new ChappieClientBuildItem(chappieClient));
 
@@ -192,13 +196,17 @@ public class ChappieDevServiceProcessor {
         return Path.of(userHome, ".chappie/" + version);
     }
 
-    private void runServer(String version, Map<String, String> properties) throws IOException {
+    private void runServer(String version, Map<String, String> properties, boolean log) throws IOException {
         Path chappieServer = getChappieServer(version);
 
         List<String> command = new ArrayList<>();
         command.add("java");
         for (Map.Entry<String, String> es : properties.entrySet()) {
             command.add("-D" + es.getKey() + "=" + es.getValue());
+        }
+        if (log) {
+            command.add("-Dchappie.log.request=true");
+            command.add("-Dchappie.log.response=true");
         }
         command.add("-jar");
         command.add(chappieServer.toString());
@@ -207,16 +215,18 @@ public class ChappieDevServiceProcessor {
 
         process = processBuilder.start();
 
-        new Thread(() -> handleStream(process.getInputStream(), "OUTPUT")).start();
-        new Thread(() -> handleStream(process.getErrorStream(), "ERROR")).start();
+        new Thread(() -> handleStream(process.getInputStream(), "OUTPUT", log)).start();
+        new Thread(() -> handleStream(process.getErrorStream(), "ERROR", log)).start();
     }
 
-    private void handleStream(java.io.InputStream inputStream, String type) {
+    private void handleStream(java.io.InputStream inputStream, String type, boolean log) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (type.equals("ERROR")) {
                     LOG.error(line);
+                } else if (log) {
+                    LOG.info(line);
                 } else {
                     LOG.debug(line);
                 }
