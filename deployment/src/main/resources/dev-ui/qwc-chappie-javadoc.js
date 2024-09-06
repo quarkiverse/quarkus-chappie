@@ -211,6 +211,7 @@ export class QwcChappieJavaDoc extends observeState(LitElement) {
             this._showProgressBar = false;
             this._sourceWithJavaDoc = jsonRpcResponse.result;
         });
+        this._scrollToBottom();
     }
     
     _saveNewSource(){
@@ -220,5 +221,20 @@ export class QwcChappieJavaDoc extends observeState(LitElement) {
         });
     }
     
+    async _scrollToBottom(){
+        
+        await this.updateComplete;
+
+        const last = Array.from(
+            this.shadowRoot.querySelectorAll('.fix')
+        ).pop();
+
+        if(last){
+            last.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+            });
+        }    
+    }
 }
 customElements.define('qwc-chappie-javadoc', QwcChappieJavaDoc);

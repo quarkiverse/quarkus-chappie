@@ -3,7 +3,6 @@ package io.quarkiverse.chappie.deployment.exception;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.quarkiverse.chappie.deployment.ChappieEnabled;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
@@ -13,7 +12,7 @@ import io.quarkus.deployment.annotations.BuildSteps;
  *
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
-@BuildSteps(onlyIf = { IsDevelopment.class, ChappieEnabled.class })
+@BuildSteps(onlyIf = IsDevelopment.class)
 class ExceptionProcessor {
 
     @BuildStep
