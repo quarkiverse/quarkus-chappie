@@ -44,7 +44,8 @@ public class ChappieDevServiceProcessor {
             Optional<OllamaBuildItem> ollamaBuildItem,
             ChappieConfig config) {
 
-        if (process == null && (config.openai().apiKey().isPresent() || ollamaBuildItem.isPresent())) {
+        if (process == null && (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()
+                || ollamaBuildItem.isPresent())) {
 
             Map<String, String> properties = new HashMap<>();
             int port = findAvailablePort(4315);
@@ -54,14 +55,25 @@ public class ChappieDevServiceProcessor {
             properties.put("quarkus.http.host", "localhost");
             properties.put("quarkus.http.port", String.valueOf(port));
 
-            if (config.openai().apiKey().isPresent()) {
-                properties.put("chappie.openai.api-key", config.openai().apiKey().get());
+            if (config.devservices().log()) {
+                properties.put("chappie.log.request", "true");
+                properties.put("chappie.log.response", "true");
+            }
+
+            properties.put("chappie.timeout", config.devservices().timeout());
+            if (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()) {
+                config.openai().apiKey().ifPresent((t) -> {
+                    properties.put("chappie.openai.api-key", t);
+                });
+                config.openai().baseUrl().ifPresent((t) -> {
+                    properties.put("chappie.openai.base-url", t);
+                });
+
                 properties.put("chappie.openai.model-name", config.openai().modelName());
+
             } else if (ollamaBuildItem.isPresent()) {
                 properties.put("chappie.ollama.base-url", ollamaBuildItem.get().getUrl());
                 properties.put("chappie.ollama.model-name", config.ollama().modelName());
-                properties.put("chappie.ollama.timeout", config.ollama().timeout());
-
             }
 
             String extVersion = extensionVersionBuildItem.getVersion();
@@ -96,7 +108,6 @@ public class ChappieDevServiceProcessor {
         }
 
         chappieClientProducer.produce(new ChappieClientBuildItem(chappieClient));
-
     }
 
     @BuildStep
@@ -204,10 +215,7 @@ public class ChappieDevServiceProcessor {
         for (Map.Entry<String, String> es : properties.entrySet()) {
             command.add("-D" + es.getKey() + "=" + es.getValue());
         }
-        if (log) {
-            command.add("-Dchappie.log.request=true");
-            command.add("-Dchappie.log.response=true");
-        }
+
         command.add("-jar");
         command.add(chappieServer.toString());
 
