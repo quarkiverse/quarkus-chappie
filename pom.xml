@@ -9,7 +9,7 @@
     </parent>
     <groupId>io.quarkiverse.chappie</groupId>
     <artifactId>quarkus-chappie-parent</artifactId>
-    <version>0.0.6</version>
+    <version>999-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Quarkus Chappie - Parent</name>
 
@@ -23,7 +23,7 @@
         <connection>scm:git:git@github.com:quarkiverse/quarkus-chappie.git</connection>
         <developerConnection>scm:git:git@github.com:quarkiverse/quarkus-chappie.git</developerConnection>
         <url>https://github.com/quarkiverse/quarkus-chappie</url>
-      <tag>0.0.6</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <properties>
