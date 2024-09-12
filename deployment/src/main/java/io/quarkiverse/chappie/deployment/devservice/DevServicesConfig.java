@@ -21,12 +21,6 @@ public interface DevServicesConfig {
     Optional<Integer> port();
 
     /**
-     * The version to use
-     */
-    @WithDefault("0.0.12")
-    String version();
-
-    /**
      * The base url for chappie
      */
     Optional<URL> url();
@@ -36,4 +30,9 @@ public interface DevServicesConfig {
      */
     Optional<Long> processId();
 
+    /**
+     * Timeout for the request
+     */
+    @WithDefault("PT120S")
+    String timeout();
 }

@@ -20,7 +20,7 @@ class ChappieDevUIProcessor {
             BuildProducer<CardPageBuildItem> cardPageProducer,
             ChappieConfig config) {
 
-        if (config.openai().apiKey().isPresent()) {
+        if (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()) {
             configuredOpenAiPage(chappiePageBuildItems, cardPageProducer, config);
         } else if (ollamaBuildItem.isPresent()) {
             configuredOllamaPage(chappiePageBuildItems, cardPageProducer, config);
@@ -32,7 +32,9 @@ class ChappieDevUIProcessor {
     private void configuredOpenAiPage(List<ChappiePageBuildItem> chappiePageBuildItems,
             BuildProducer<CardPageBuildItem> cardPageProducer,
             ChappieConfig config) {
-        configuredPage(chappiePageBuildItems, cardPageProducer, "OpenAI", config.openai().modelName());
+
+        configuredPage(chappiePageBuildItems, cardPageProducer, "OpenAI ",
+                config.openai().baseUrl().orElse(config.openai().modelName()));
     }
 
     private void configuredOllamaPage(List<ChappiePageBuildItem> chappiePageBuildItems,

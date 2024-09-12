@@ -30,10 +30,4 @@ public interface OllamaConfig {
     @WithDefault("true")
     boolean preload();
 
-    /**
-     * Timeout for the request
-     */
-    @WithDefault("PT120S")
-    String timeout();
-
 }

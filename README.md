@@ -17,7 +17,7 @@ extension to you project, example in maven:
 
 Chappie is a Dev Mode only extension, so this does not add anything to your production application.
 
-To use chappie, you need to configure it with either an OpenAI Api Key or have Ollama running locally.
+To use chappie, you need to configure it with either an OpenAI Compatible Service or have Ollama running locally.
 
 ## Using OpenAI
 To use OpenAI you need to provide an [OpenAI Api Key](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key) 
@@ -29,10 +29,35 @@ Example:
 mvn quarkus:dev -Dquarkus.assistant.openai.api-key=sk....
 ```
 
+## Using Podman Desktop AI
+You can use Podman Desktop AI by setting the openai base-url and the api key to a dummy value.
+
+Example:
+
+```
+mvn quarkus:dev -Dquarkus.assistant.openai.api-key=sk-dummy -Dquarkus.assistant.openai.base-url=http://localhost:46311/v1 -Dquarkus.assistant.openai.model-name=instructlab/granite-7b-lab-GGUF
+```
+
+Change the values to your own setup.
+
+# Using MAAS
+
+You can also use [Models as a Service on OpenShift AI](https://maas.apps.prod.rhoai.rh-aiservices-bu.com/)
+
+Example:
+
+```
+mvn quarkus:dev -Dquarkus.assistant.openai.api-key=your-key-here -Dquarkus.assistant.openai.base-url=quarkus.assistant.openai.base-url=https://granite-8b-code-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1 -Dquarkus.assistant.openai.model-name=granite-8b-code-instruct-128k
+```
+
+Change the values to your own setup.
+
 ## Using Ollama
 To use Ollama you need to install and run ollama. See [ollama.com/download](https://ollama.com/download)
 
-By default, Ollama will use the `codellama` model. You can configure this with `quarkus.assistant.ollama.model-name` property, example:
+By default, Ollama will use the `codellama` model. You can configure this with `quarkus.assistant.ollama.model-name` property.
+
+Example:
 
 ```
 quarkus.assistant.ollama.model-name=instructlab/granite-7b-lab

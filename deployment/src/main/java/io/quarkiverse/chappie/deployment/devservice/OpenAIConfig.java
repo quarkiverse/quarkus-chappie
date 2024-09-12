@@ -14,6 +14,11 @@ public interface OpenAIConfig {
     Optional<String> apiKey();
 
     /**
+     * Your OpenAI Base Url
+     */
+    Optional<String> baseUrl();
+
+    /**
      * The Model to use
      */
     @WithDefault("gpt-4o-mini")
