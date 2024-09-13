@@ -47,7 +47,7 @@ You can also use [Models as a Service on OpenShift AI](https://maas.apps.prod.rh
 Example:
 
 ```
-mvn quarkus:dev -Dquarkus.assistant.openai.api-key=your-key-here -Dquarkus.assistant.openai.base-url=quarkus.assistant.openai.base-url=https://granite-8b-code-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1 -Dquarkus.assistant.openai.model-name=granite-8b-code-instruct-128k
+mvn quarkus:dev -Dquarkus.assistant.openai.api-key=your-key-here -Dquarkus.assistant.openai.base-url=https://granite-8b-code-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1 -Dquarkus.assistant.openai.model-name=granite-8b-code-instruct-128k
 ```
 
 Change the values to your own setup.
