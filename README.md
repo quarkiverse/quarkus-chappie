@@ -40,7 +40,7 @@ mvn quarkus:dev -Dquarkus.assistant.openai.api-key=sk-dummy -Dquarkus.assistant.
 
 Change the values to your own setup.
 
-# Using Openshift AI
+## Using Openshift AI
 
 You can also use [Models as a Service on OpenShift AI](https://maas.apps.prod.rhoai.rh-aiservices-bu.com/)
 
