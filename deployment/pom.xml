@@ -11,7 +11,7 @@
     <name>Quarkus Chappie - Deployment</name>
 
     <properties>
-        <chappie-server.version>0.0.13</chappie-server.version>
+        <chappie-server.version>999-SNAPSHOT</chappie-server.version>
     </properties>
 
     <dependencies>

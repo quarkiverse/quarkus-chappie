@@ -10,12 +10,6 @@ import io.smallrye.config.WithDefault;
 public interface DevServicesConfig {
 
     /**
-     * Show the log of the dev service in the application log
-     */
-    @WithDefault("false")
-    boolean log();
-
-    /**
      * The default port where the inference server listens for requests
      */
     Optional<Integer> port();

@@ -29,23 +29,33 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
 import io.quarkus.deployment.dev.devservices.GlobalDevServicesConfig;
+import io.quarkus.devui.spi.buildtime.FooterLogBuildItem;
 import io.quarkus.runtime.util.ClassPathUtils;
+import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
 @BuildSteps(onlyIf = { IsDevelopment.class, GlobalDevServicesConfig.Enabled.class })
 public class ChappieDevServiceProcessor {
     private static Process process;
     private static ChappieClient chappieClient;
-    private static final Logger LOG = Logger.getLogger("Quarkus Assistant");
+    private static final Logger LOG = Logger.getLogger(ChappieDevServiceProcessor.class);
 
     @BuildStep
     public void createContainer(BuildProducer<DevServicesResultBuildItem> devServicesResultProducer,
             BuildProducer<ChappieClientBuildItem> chappieClientProducer,
+            BuildProducer<FooterLogBuildItem> footerLogProducer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
             Optional<OllamaBuildItem> ollamaBuildItem,
             ChappieConfig config) {
 
         if (process == null && (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()
                 || ollamaBuildItem.isPresent())) {
+
+            BroadcastProcessor<String> logProcessor = BroadcastProcessor.create();
+
+            // Dev UI Log stream
+            footerLogProducer.produce(new FooterLogBuildItem("Assistant", () -> {
+                return logProcessor.convert().toPublisher();
+            }));
 
             Map<String, String> properties = new HashMap<>();
             int port = findAvailablePort(4315);
@@ -54,11 +64,8 @@ public class ChappieDevServiceProcessor {
 
             properties.put("quarkus.http.host", "localhost");
             properties.put("quarkus.http.port", String.valueOf(port));
-
-            if (config.devservices().log()) {
-                properties.put("chappie.log.request", "true");
-                properties.put("chappie.log.response", "true");
-            }
+            properties.put("chappie.log.request", "true");
+            properties.put("chappie.log.response", "true");
 
             properties.put("chappie.timeout", config.devservices().timeout());
             if (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()) {
@@ -82,7 +89,7 @@ public class ChappieDevServiceProcessor {
             }
 
             try {
-                runServer(extVersion, properties, config.devservices().log());
+                runServer(extVersion, properties, logProcessor);
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     if (process != null && process.isAlive()) {
                         process.destroy();
@@ -207,7 +214,8 @@ public class ChappieDevServiceProcessor {
         return Path.of(userHome, ".chappie/" + version);
     }
 
-    private void runServer(String version, Map<String, String> properties, boolean log) throws IOException {
+    private void runServer(String version, Map<String, String> properties, BroadcastProcessor<String> logProcessor)
+            throws IOException {
         Path chappieServer = getChappieServer(version);
 
         List<String> command = new ArrayList<>();
@@ -223,21 +231,15 @@ public class ChappieDevServiceProcessor {
 
         process = processBuilder.start();
 
-        new Thread(() -> handleStream(process.getInputStream(), "OUTPUT", log)).start();
-        new Thread(() -> handleStream(process.getErrorStream(), "ERROR", log)).start();
+        new Thread(() -> handleStream(process.getInputStream(), logProcessor)).start();
+        new Thread(() -> handleStream(process.getErrorStream(), logProcessor)).start();
     }
 
-    private void handleStream(java.io.InputStream inputStream, String type, boolean log) {
+    private void handleStream(java.io.InputStream inputStream, BroadcastProcessor<String> logProcessor) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (type.equals("ERROR")) {
-                    LOG.error(line);
-                } else if (log) {
-                    LOG.info(line);
-                } else {
-                    LOG.debug(line);
-                }
+                logProcessor.onNext(line);
             }
         } catch (IOException e) {
             LOG.error("Error in Quarkus Assistant", e);
