@@ -216,7 +216,9 @@ export class QwcChappieException extends observeState(LitElement) {
         // Get the current last know exception
         this.jsonRpc.suggestFix().then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._suggestedFix = jsonRpcResponse.result;
+            this._suggestedFix = JSON.parse(jsonRpcResponse.result);
+            console.log(jsonRpcResponse.result);
+            
         });
         this._scrollToBottom();
     }

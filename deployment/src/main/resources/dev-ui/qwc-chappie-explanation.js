@@ -145,7 +145,7 @@ export class QwcChappieExplanation extends observeState(LitElement) {
                             </span>
                         </div>`;
         }else if(this._explanation){
-            const htmlContent = this.md.render(this._explanation);
+            const htmlContent = this.md.render(this._explanation.explanation);
             return html`<div class="fix">
                             <span class="heading-fix">
                                 Explanation from AI
@@ -191,7 +191,7 @@ export class QwcChappieExplanation extends observeState(LitElement) {
         this._showProgressBar = true;
         this.jsonRpc.explainClass({className:this._selectedClass}).then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._explanation = jsonRpcResponse.result;
+            this._explanation = JSON.parse(jsonRpcResponse.result);
         });
         this._scrollToBottom();
     }

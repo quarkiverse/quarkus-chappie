@@ -208,9 +208,10 @@ export class QwcChappieTesting extends observeState(LitElement) {
     
     _createTestSource(){
         this._showProgressBar = true;
+        
         this.jsonRpc.suggestTestClass({className:this._selectedClass}).then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._suggestedTestSource = jsonRpcResponse.result;
+            this._suggestedTestSource = JSON.parse(jsonRpcResponse.result);
         });
         this._scrollToBottom();
     }

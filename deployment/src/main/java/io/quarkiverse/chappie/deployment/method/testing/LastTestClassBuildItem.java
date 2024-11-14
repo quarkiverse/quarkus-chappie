@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.testing;
+package io.quarkiverse.chappie.deployment.method.testing;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;

@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.exception;
+package io.quarkiverse.chappie.deployment.method.exception;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;

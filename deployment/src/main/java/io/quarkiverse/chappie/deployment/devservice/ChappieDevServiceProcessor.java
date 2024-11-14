@@ -28,6 +28,7 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
 import io.quarkus.deployment.dev.devservices.GlobalDevServicesConfig;
 import io.quarkus.devui.spi.buildtime.FooterLogBuildItem;
 import io.quarkus.runtime.util.ClassPathUtils;
@@ -36,12 +37,12 @@ import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 @BuildSteps(onlyIf = { IsDevelopment.class, GlobalDevServicesConfig.Enabled.class })
 public class ChappieDevServiceProcessor {
     private static Process process;
-    private static ChappieClient chappieClient;
+    private static ChappieRESTClient chappieRESTClient;
     private static final Logger LOG = Logger.getLogger(ChappieDevServiceProcessor.class);
 
     @BuildStep
     public void createContainer(BuildProducer<DevServicesResultBuildItem> devServicesResultProducer,
-            BuildProducer<ChappieClientBuildItem> chappieClientProducer,
+            BuildProducer<AIBuildItem> aiProducer,
             BuildProducer<FooterLogBuildItem> footerLogProducer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
             Optional<OllamaBuildItem> ollamaBuildItem,
@@ -110,11 +111,10 @@ public class ChappieDevServiceProcessor {
                     .produce(
                             new DevServicesResultBuildItem(Feature.FEATURE, "Dev services for Quarkus Assistant", null, props));
 
-            chappieClient = new ChappieClient(jsonRpcBase);
-            chappieClient.connect();
+            chappieRESTClient = new ChappieRESTClient(jsonRpcBase);
         }
 
-        chappieClientProducer.produce(new ChappieClientBuildItem(chappieClient));
+        aiProducer.produce(new AIBuildItem(chappieRESTClient));
     }
 
     @BuildStep
@@ -142,7 +142,6 @@ public class ChappieDevServiceProcessor {
                         if (artifactId != null && artifactId.startsWith(GAV_START)) {
                             String version = artifactId.substring(GAV_START.length());
                             extensionVersionProducer.produce(new ExtensionVersionBuildItem(version));
-                            return;
                         }
                     }
                 } catch (IOException | RuntimeException e) {
