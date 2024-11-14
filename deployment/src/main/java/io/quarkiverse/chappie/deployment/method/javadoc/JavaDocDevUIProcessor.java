@@ -1,25 +1,29 @@
-package io.quarkiverse.chappie.deployment.javadoc;
+package io.quarkiverse.chappie.deployment.method.javadoc;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.ParameterCreator;
 import io.quarkiverse.chappie.deployment.SourceCodeFinder;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
+import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -57,7 +61,7 @@ class JavaDocDevUIProcessor {
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
             LastJavaDocBuildItem lastJavaDocBuildItem,
-            ChappieClientBuildItem chappieClientBuildItem) {
+            AIBuildItem aiBuildItem) {
         if (chappieAvailable.isPresent()) {
             if (srcMainJava == null) {
                 srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
@@ -89,34 +93,48 @@ class JavaDocDevUIProcessor {
 
                     if (sourceCode != null) {
 
-                        ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                        Object[] params = ParameterCreator.getParameters("", "JavaDoc", sourceCode);
-                        CompletableFuture<Object> result = chappieClient.executeRPC("doc#addDoc", params);
+                        AIClient aiClient = aiBuildItem.getAIClient();
 
-                        result.thenApply(classWithJavaDoc -> {
+                        CompletableFuture<String> response = aiClient
+                                .request("doc", Map.of("doc", "JavaDoc", "source", sourceCode));
+
+                        response.thenAccept((classWithJavaDoc) -> {
                             lastJavaDocBuildItem.getLastResponse().set(classWithJavaDoc);
                             lastJavaDocBuildItem.getPath().set(sourcePath);
-                            return classWithJavaDoc;
                         });
-                        return result;
+
+                        return response;
                     }
                 }
                 return null;
             });
 
             buildItemActions.addAction("save", ignored -> {
-                String sourceCode = (String) lastJavaDocBuildItem.getLastResponse().get();
+                String json = (String) lastJavaDocBuildItem.getLastResponse().get();
                 Path srcPath = lastJavaDocBuildItem.getPath().get();
+                try (StringReader r = new StringReader(json)) {
 
-                try {
-                    Files.createDirectories(srcPath.getParent());
-                    if (!Files.exists(srcPath))
-                        Files.createFile(srcPath);
-                    Files.writeString(srcPath, sourceCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    ObjectMapper mapper = new ObjectMapper();
+                    TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
+                    };
+
+                    try {
+                        HashMap<String, Object> object = mapper.readValue(r, typeRef);
+
+                        if (object.containsKey("sourceWithDoc")) {
+                            String sourceWithDoc = (String) object.get("sourceWithDoc");
+
+                            Files.createDirectories(srcPath.getParent());
+                            if (!Files.exists(srcPath))
+                                Files.createFile(srcPath);
+                            Files.writeString(srcPath, sourceWithDoc, StandardOpenOption.TRUNCATE_EXISTING,
+                                    StandardOpenOption.CREATE);
+                        }
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+
                 }
-
                 return srcPath;
             });
 

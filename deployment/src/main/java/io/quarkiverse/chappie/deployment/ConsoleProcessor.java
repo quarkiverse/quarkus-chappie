@@ -1,16 +1,20 @@
 package io.quarkiverse.chappie.deployment;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
-import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.quarkiverse.chappie.deployment.devservice.ollama.OllamaBuildItem;
-import io.quarkiverse.chappie.deployment.exception.LastException;
-import io.quarkiverse.chappie.deployment.exception.LastExceptionBuildItem;
+import io.quarkiverse.chappie.deployment.method.exception.LastException;
+import io.quarkiverse.chappie.deployment.method.exception.LastExceptionBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -20,6 +24,8 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
+import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.vertx.core.Vertx;
@@ -47,7 +53,7 @@ class ConsoleProcessor {
     @BuildStep
     void setupConsole(BuildProducer<FeatureBuildItem> featureProducer,
             LastExceptionBuildItem lastExceptionBuildItem,
-            ChappieClientBuildItem chappieClientBuildItem,
+            AIBuildItem aiBuildItem,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
             Optional<ChappieAvailableBuildItem> chappieAvailable) {
 
@@ -60,64 +66,70 @@ class ConsoleProcessor {
             }
 
             Vertx vertx = Vertx.vertx();
-            chappieConsoleContext.reset(
-                    new ConsoleCommand('a', "Help with the latest exception",
-                            new ConsoleCommand.HelpState(new Supplier<String>() {
-                                @Override
-                                public String get() {
-                                    return MessageFormat.RED;
-                                }
-                            }, new Supplier<String>() {
-                                @Override
-                                public String get() {
-                                    LastException lastException = lastExceptionBuildItem.getLastException().get();
-                                    if (lastException == null) {
-                                        return "none";
-                                    }
-                                    return lastException.throwable().getMessage();
-                                }
-                            }), new Runnable() {
-                                @Override
-                                public void run() {
-                                    LastException lastException = lastExceptionBuildItem.getLastException().get();
-                                    if (lastException == null) {
-                                        return;
-                                    }
+            chappieConsoleContext.reset(new ConsoleCommand('a', "Help with the latest exception",
+                    new ConsoleCommand.HelpState(new Supplier<String>() {
+                        @Override
+                        public String get() {
+                            return MessageFormat.RED;
+                        }
+                    }, new Supplier<String>() {
+                        @Override
+                        public String get() {
+                            LastException lastException = lastExceptionBuildItem.getLastException().get();
+                            if (lastException == null) {
+                                return "none";
+                            }
+                            return lastException.throwable().getMessage();
+                        }
+                    }), new Runnable() {
+                        @Override
+                        public void run() {
+                            LastException lastException = lastExceptionBuildItem.getLastException().get();
+                            if (lastException == null) {
+                                return;
+                            }
 
-                                    String sourceString = SourceCodeFinder.getSourceCode(srcMainJava,
-                                            lastException.stackTraceElement());
+                            String sourceString = SourceCodeFinder.getSourceCode(srcMainJava,
+                                    lastException.stackTraceElement());
 
-                                    String stacktraceString = lastException.getStackTraceString();
+                            String stacktraceString = lastException.getStackTraceString();
 
-                                    System.out.println(
-                                            "===============\nAssisting with the exception, please wait");
+                            System.out.println(
+                                    "=========================================\n"
+                                            + "Assisting with the exception, please wait");
 
-                                    long timer = vertx.setPeriodic(800, id -> System.out.print("."));
+                            long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
-                                    ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                                    Object[] params = ParameterCreator.getParameters("", stacktraceString, sourceString);
+                            AIClient aiClient = aiBuildItem.getAIClient();
 
-                                    CompletableFuture<Object> futureResult = chappieClient.executeRPC("exception#suggestfix",
-                                            params);
+                            CompletableFuture<String> response = aiClient
+                                    .request("exception", Map.of("stacktrace", stacktraceString, "source", sourceString));
 
-                                    futureResult.thenAccept(r -> {
-                                        vertx.cancelTimer(timer);
-                                        Map result = (Map) r;
+                            response.thenAccept((json) -> {
+                                vertx.cancelTimer(timer);
 
+                                try (StringReader r = new StringReader(json)) {
+                                    ObjectMapper mapper = new ObjectMapper();
+                                    TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
+                                    };
+
+                                    try {
+                                        HashMap<String, Object> result = mapper.readValue(r, typeRef);
                                         System.out.println("\n\n" + result.get("response"));
                                         System.out.println("\n\n" + result.get("explanation"));
                                         System.out.println("\n------ Diff ------ ");
                                         System.out.println("\n\n" + result.get("diff"));
                                         System.out.println("\n------ Suggested source ------ ");
                                         System.out.println("\n\n" + result.get("suggestedSource"));
-                                    }).exceptionally(throwable -> {
-                                        // Handle any errors
+                                    } catch (IOException ex) {
                                         System.out.println("\n\nCould not get a response from ai due the this exception:");
-                                        throwable.printStackTrace();
-                                        return null;
-                                    });
+                                        ex.printStackTrace();
+                                    }
                                 }
-                            }));
+
+                            });
+                        }
+                    }));
         }
 
         featureProducer.produce(new FeatureBuildItem(Feature.FEATURE));

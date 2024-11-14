@@ -1,22 +1,20 @@
-package io.quarkiverse.chappie.deployment.explanation;
+package io.quarkiverse.chappie.deployment.method.explanation;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappieConfig;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.ParameterCreator;
 import io.quarkiverse.chappie.deployment.SourceCodeFinder;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
+import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -44,7 +42,7 @@ class ExplanationDevUIProcessor {
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
-            ChappieClientBuildItem chappieClientBuildItem,
+            AIBuildItem aiBuildItem,
             ChappieConfig chappieConfig) {
 
         if (chappieAvailable.isPresent()) {
@@ -77,11 +75,9 @@ class ExplanationDevUIProcessor {
                     String sourceCode = SourceCodeFinder.getSourceCode(sourcePath);
 
                     if (sourceCode != null) {
+                        AIClient aiClient = aiBuildItem.getAIClient();
 
-                        ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                        Object[] params = ParameterCreator.getParameters("", sourceCode);
-                        CompletableFuture<Object> result = chappieClient.executeRPC("explanation#explain", params);
-                        return result;
+                        return aiClient.request("explanation", Map.of("source", sourceCode));
                     }
                 }
                 return null;

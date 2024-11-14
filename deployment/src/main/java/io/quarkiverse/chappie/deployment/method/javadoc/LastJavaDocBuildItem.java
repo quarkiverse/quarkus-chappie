@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.javadoc;
+package io.quarkiverse.chappie.deployment.method.javadoc;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;

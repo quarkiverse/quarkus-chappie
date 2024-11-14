@@ -164,7 +164,7 @@ export class QwcChappieJavaDoc extends observeState(LitElement) {
                                 <qui-code-block
                                     mode='java'
                                     theme='${themeState.theme.name}'>
-                                    <slot>${this._sourceWithJavaDoc}</slot>
+                                    <slot>${this._sourceWithJavaDoc.sourceWithDoc}</slot>
                                 </qui-code-block>
                             </div>
                             
@@ -209,7 +209,7 @@ export class QwcChappieJavaDoc extends observeState(LitElement) {
         this._showProgressBar = true;
         this.jsonRpc.addJavaDoc({className:this._selectedClass}).then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._sourceWithJavaDoc = jsonRpcResponse.result;
+            this._sourceWithJavaDoc = JSON.parse(jsonRpcResponse.result);
         });
         this._scrollToBottom();
     }

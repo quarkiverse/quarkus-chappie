@@ -1,21 +1,23 @@
-package io.quarkiverse.chappie.deployment.exception;
+package io.quarkiverse.chappie.deployment.method.exception;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.ParameterCreator;
 import io.quarkiverse.chappie.deployment.SourceCodeFinder;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -23,6 +25,8 @@ import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
+import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -88,7 +92,7 @@ class ExceptionDevUIProcessor {
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
-            ChappieClientBuildItem chappieClientBuildItem,
+            AIBuildItem aiBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
             LastSolutionBuildItem lastSolutionBuildItem) {
@@ -124,32 +128,42 @@ class ExceptionDevUIProcessor {
                     String sourceString = SourceCodeFinder.getSourceCode(srcMainJava, lastException.stackTraceElement());
                     String stacktraceString = lastException.getStackTraceString();
 
-                    ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                    Object[] params = ParameterCreator.getParameters("", stacktraceString, sourceString);
-                    CompletableFuture<Object> result = chappieClient.executeRPC("exception#suggestfix", params);
+                    AIClient aiClient = aiBuildItem.getAIClient();
 
-                    result.thenApply(suggestedFix -> {
+                    CompletableFuture<String> response = aiClient
+                            .request("exception", Map.of("stacktrace", stacktraceString, "source", sourceString));
+
+                    response.thenAccept((suggestedFix) -> {
                         lastSolutionBuildItem.getLastSolution().set(suggestedFix);
                         lastSolutionBuildItem.getPath().set(sourcePath);
-                        return suggestedFix;
                     });
 
-                    return result;
+                    return response;
                 }
                 return null;
             });
 
             // This suggest fix based on exception and code
             buildItemActions.addAction("applyFix", code -> {
-                Object lastSolution = lastSolutionBuildItem.getLastSolution().get();
+                String json = (String) lastSolutionBuildItem.getLastSolution().get();
                 Path path = lastSolutionBuildItem.getPath().get();
-                if (lastSolution != null && path != null) {
-                    Map jsonRPCResponse = (Map) lastSolution;
-                    if (jsonRPCResponse.containsKey("suggestedSource")) {
-                        String newCode = (String) jsonRPCResponse.get("suggestedSource");
+                try (StringReader r = new StringReader(json)) {
+                    if (json != null && path != null) {
+                        ObjectMapper mapper = new ObjectMapper();
+                        TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
+                        };
+
                         try {
-                            Files.writeString(path, newCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-                            return path.toString();
+                            HashMap<String, Object> object = mapper.readValue(r, typeRef);
+
+                            if (object.containsKey("suggestedSource")) {
+                                String newCode = (String) object.get("suggestedSource");
+
+                                Files.writeString(path, newCode, StandardOpenOption.TRUNCATE_EXISTING,
+                                        StandardOpenOption.CREATE);
+                                return path.toString();
+
+                            }
                         } catch (IOException ex) {
                             ex.printStackTrace();
                         }

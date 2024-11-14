@@ -1,25 +1,29 @@
-package io.quarkiverse.chappie.deployment.testing;
+package io.quarkiverse.chappie.deployment.method.testing;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.ParameterCreator;
 import io.quarkiverse.chappie.deployment.SourceCodeFinder;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClient;
-import io.quarkiverse.chappie.deployment.devservice.ChappieClientBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
+import io.quarkus.deployment.dev.ai.AIBuildItem;
+import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -57,7 +61,7 @@ class TestingDevUIProcessor {
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
             LastTestClassBuildItem lastTestClassBuildItem,
-            ChappieClientBuildItem chappieClientBuildItem) {
+            AIBuildItem aiBuildItem) {
 
         if (chappieAvailable.isPresent()) {
             if (srcMainJava == null) {
@@ -89,37 +93,48 @@ class TestingDevUIProcessor {
                     String sourceCode = SourceCodeFinder.getSourceCode(sourcePath);
 
                     if (sourceCode != null) {
+                        AIClient aiClient = aiBuildItem.getAIClient();
 
-                        ChappieClient chappieClient = chappieClientBuildItem.getChappieClient();
-                        Object[] params = ParameterCreator.getParameters(
-                                "Make sure to NOT create a NativeTest, but a normal Quarkus Unit test", sourceCode);
-                        CompletableFuture<Object> result = chappieClient.executeRPC("testing#suggesttest", params);
+                        CompletableFuture<String> response = aiClient
+                                .request("testing",
+                                        Optional.of("Make sure to NOT create a NativeTest, but a normal Quarkus Unit test"),
+                                        Map.of("source", sourceCode));
 
-                        result.thenApply(suggestedTestClass -> {
-                            lastTestClassBuildItem.getLastResponse().set(suggestedTestClass);
+                        response.thenAccept((classWithJavaDoc) -> {
+                            lastTestClassBuildItem.getLastResponse().set(classWithJavaDoc);
                             lastTestClassBuildItem.getPath().set(sourcePath);
-                            return suggestedTestClass;
                         });
-                        return result;
+
+                        return response;
                     }
                 }
                 return null;
             });
 
             buildItemActions.addAction("saveSuggestion", ignored -> {
-                Map m = (Map) lastTestClassBuildItem.getLastResponse().get();
-                Path srcPath = lastTestClassBuildItem.getPath().get();
+                String json = (String) lastTestClassBuildItem.getLastResponse().get();
+                Path testPath = createTestPath(lastTestClassBuildItem.getPath().get());
+                try (StringReader r = new StringReader(json)) {
 
-                String sourceCode = (String) m.get("suggestedTestSource");
-                Path testPath = createTestPath(srcPath);
+                    ObjectMapper mapper = new ObjectMapper();
+                    TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
+                    };
 
-                try {
-                    Files.createDirectories(testPath.getParent());
-                    if (!Files.exists(testPath))
-                        Files.createFile(testPath);
-                    Files.writeString(testPath, sourceCode, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    try {
+                        HashMap<String, Object> object = mapper.readValue(r, typeRef);
+
+                        if (object.containsKey("suggestedTestSource")) {
+                            String suggestedTestSource = (String) object.get("suggestedTestSource");
+
+                            Files.createDirectories(testPath.getParent());
+                            if (!Files.exists(testPath))
+                                Files.createFile(testPath);
+                            Files.writeString(testPath, suggestedTestSource, StandardOpenOption.TRUNCATE_EXISTING,
+                                    StandardOpenOption.CREATE);
+                        }
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
 
                 return testPath;
@@ -129,6 +144,7 @@ class TestingDevUIProcessor {
         }
     }
 
+    // TODO: Will this work in Gradle ?
     private Path createTestPath(Path srcPath) {
         String s = srcPath.toString();
         s = s.replace("/main/", "/test/");
