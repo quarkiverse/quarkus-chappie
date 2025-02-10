@@ -1,6 +1,11 @@
 package io.quarkiverse.chappie.deployment.sourceoperation;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +27,7 @@ import io.quarkus.devui.spi.page.Page;
 class SourceOperationDevUIProcessor {
 
     static volatile Path srcMainJava;
-    static volatile List<String> knownClasses;
+    static volatile List<KnownClass> knownClasses;
 
     @BuildStep
     void sourceOperationPage(Optional<ChappieAvailableBuildItem> chappieAvailable,
@@ -38,6 +43,8 @@ class SourceOperationDevUIProcessor {
 
     @BuildStep
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
+            List<SourceManipulationBuildItem> sourceManipulationBuildItems,
+            List<SourceGenerationBuildItem> sourceGenerationBuildItems,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             LoggingDecorateBuildItem loggingDecorateBuildItem,
             AIBuildItem aiBuildItem,
@@ -48,8 +55,14 @@ class SourceOperationDevUIProcessor {
                 srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
             }
             if (knownClasses == null) {
-                knownClasses = loggingDecorateBuildItem.getKnowClasses();
+                knownClasses = new ArrayList<>();
+                for (String knownClass : loggingDecorateBuildItem.getKnowClasses()) {
+                    Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, knownClass);
+                    knownClasses.add(new KnownClass(knownClass, sourcePath));
+                }
             }
+
+            // Actions
             BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
 
             buildItemActions.addAction("getKnownClasses", ignored -> {
@@ -65,7 +78,54 @@ class SourceOperationDevUIProcessor {
                 return null;
             });
 
+            buildItemActions.addAction("save", (Map<String, String> param) -> {
+                if (param.containsKey("sourceCode")) {
+                    String sourceCode = param.get("sourceCode");
+                    String uriString = param.get("path");
+                    Path srcPath = Path.of(URI.create(uriString));
+                    try {
+                        Files.createDirectories(srcPath.getParent());
+                        if (!Files.exists(srcPath))
+                            Files.createFile(srcPath);
+                        Files.writeString(srcPath, sourceCode, StandardOpenOption.TRUNCATE_EXISTING,
+                                StandardOpenOption.CREATE);
+                    } catch (IOException ex) {
+                        return new SavedResult(srcPath, false, ex.getMessage());
+                    }
+                    return new SavedResult(srcPath, true, null);
+                }
+                throw new RuntimeException("Invalid input");
+            });
+
+            List<SourceAction> sourceActions = new ArrayList<>();
+            // Source manipulations
+            for (SourceManipulationBuildItem sourceManipulation : sourceManipulationBuildItems) {
+                sourceActions
+                        .add(new SourceAction(sourceManipulation.getLabel(), sourceManipulation.getMethodName(),
+                                Action.Manipulation));
+                buildItemActions.addAction(sourceManipulation.getMethodName(), sourceManipulation.getAction());
+            }
+
+            // Source generation
+            for (SourceGenerationBuildItem sourceGeneration : sourceGenerationBuildItems) {
+                sourceActions
+                        .add(new SourceAction(sourceGeneration.getLabel(), sourceGeneration.getMethodName(),
+                                Action.Generation));
+                buildItemActions.addAction(sourceGeneration.getMethodName(), sourceGeneration.getAction());
+            }
+
+            buildItemActions.addAction("getSourceActions", (Map<String, String> param) -> {
+                return sourceActions;
+            });
+
             buildTimeActionProducer.produce(buildItemActions);
         }
     }
+
+    static record KnownClass(String className, Path path) {
+    }
+
+    static record SavedResult(Path path, boolean success, String errorMessage) {
+    }
+
 }

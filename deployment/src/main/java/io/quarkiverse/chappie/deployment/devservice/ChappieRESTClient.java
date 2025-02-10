@@ -9,8 +9,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import io.quarkiverse.chappie.deployment.ParameterCreator;
+import io.quarkiverse.chappie.deployment.JsonObjectCreator;
 import io.quarkus.deployment.dev.ai.AIClient;
+import io.quarkus.deployment.dev.ai.GenerationOutput;
+import io.quarkus.deployment.dev.ai.ManipulationOutput;
 
 public class ChappieRESTClient implements AIClient {
 
@@ -23,29 +25,74 @@ public class ChappieRESTClient implements AIClient {
     @Override
     public CompletableFuture<String> request(String method, Optional<String> extraContext, Map<String, String> params) {
         try {
-            String jsonPayload = ParameterCreator.getInput(extraContext, params);
-
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/" + method))
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
-                    .build();
-
-            return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(response -> {
-                        int status = response.statusCode();
-                        if (status == 200) {
-                            return response.body();
-                        } else {
-                            throw new RuntimeException("Failed: HTTP error code : " + status);
-                        }
-                    });
+            String jsonPayload = JsonObjectCreator.getInput(extraContext, params);
+            return send(method, jsonPayload);
         } catch (Exception ex) {
             CompletableFuture<String> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             return failedFuture;
         }
+    }
+
+    @Override
+    public CompletableFuture<ManipulationOutput> manipulateSource(Optional<String> systemMessage, String userMessage,
+            String sourceCode) {
+        try {
+            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
+                    Map.of("source", sourceCode));
+            return send("manipulateSource", jsonPayload, ManipulationOutput.class);
+        } catch (Exception ex) {
+            CompletableFuture<ManipulationOutput> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            return failedFuture;
+        }
+    }
+
+    @Override
+    public CompletableFuture<GenerationOutput> generateSource(Optional<String> systemMessage, String userMessage,
+            String sourceCode) {
+        try {
+            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
+                    Map.of("source", sourceCode));
+            return send("generateSource", jsonPayload, GenerationOutput.class);
+        } catch (Exception ex) {
+            CompletableFuture<GenerationOutput> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            return failedFuture;
+        }
+    }
+
+    private CompletableFuture<String> send(String method, String jsonPayload) {
+        return send(createHttpRequest(method, jsonPayload), String.class);
+    }
+
+    private <T> CompletableFuture<T> send(String method, String jsonPayload, Class<T> responseType) {
+        return send(createHttpRequest(method, jsonPayload), responseType);
+    }
+
+    private <T> CompletableFuture<T> send(HttpRequest request, Class<T> responseType) {
+        HttpClient client = HttpClient.newHttpClient();
+        return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    int status = response.statusCode();
+                    if (status == 200) {
+                        if (responseType.isInstance(String.class)) { // Handle other Java types
+                            return response.body();
+                        } else {
+                            return JsonObjectCreator.getOutput(response.body(), responseType);
+                        }
+                    } else {
+                        throw new RuntimeException("Failed: HTTP error code : " + status);
+                    }
+                });
+    }
+
+    private HttpRequest createHttpRequest(String method, String jsonPayload) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/" + method))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                .build();
     }
 }

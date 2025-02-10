@@ -13,7 +13,7 @@ public class ChappieSimulateResource {
     @GET
     @Path("/nullpointer")
     public int nullpointer() {
-        String str = null;
+        String str = "";
         return str.length();
     }
 
