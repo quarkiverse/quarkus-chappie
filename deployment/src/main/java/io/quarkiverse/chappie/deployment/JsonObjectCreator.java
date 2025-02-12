@@ -64,7 +64,7 @@ public class JsonObjectCreator {
         try {
             return objectMapper.readValue(json, responseType);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse JSON response", e);
+            throw new RuntimeException("Failed to parse JSON response \n" + json, e);
         }
     }
 

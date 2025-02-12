@@ -2,6 +2,7 @@ package io.quarkiverse.chappie.deployment.method.exception;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -17,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.SourceCodeFinder;
+import io.quarkiverse.chappie.deployment.ContentIO;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -124,8 +125,8 @@ class ExceptionDevUIProcessor {
             buildItemActions.addAction("suggestFix", ignored -> {
                 LastException lastException = lastExceptionBuildItem.getLastException().get();
                 if (lastException != null) {
-                    Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, lastException.stackTraceElement());
-                    String sourceString = SourceCodeFinder.getSourceCode(srcMainJava, lastException.stackTraceElement());
+                    Path sourcePath = ContentIO.getSourceCodePath(srcMainJava, lastException.stackTraceElement());
+                    String sourceString = ContentIO.getSourceCode(srcMainJava, lastException.stackTraceElement());
                     String stacktraceString = lastException.getStackTraceString();
 
                     AIClient aiClient = aiBuildItem.getAIClient();
@@ -165,7 +166,7 @@ class ExceptionDevUIProcessor {
 
                             }
                         } catch (IOException ex) {
-                            ex.printStackTrace();
+                            throw new UncheckedIOException(ex);
                         }
                     }
                 }

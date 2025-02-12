@@ -35,12 +35,12 @@ public class ChappieRESTClient implements AIClient {
     }
 
     @Override
-    public CompletableFuture<ManipulationOutput> manipulateSource(Optional<String> systemMessage, String userMessage,
-            String sourceCode) {
+    public CompletableFuture<ManipulationOutput> manipulate(Optional<String> systemMessage, String userMessage,
+            String path, String content) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("source", sourceCode));
-            return send("manipulateSource", jsonPayload, ManipulationOutput.class);
+                    Map.of("path", path, "content", content));
+            return send("manipulate", jsonPayload, ManipulationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<ManipulationOutput> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -49,12 +49,12 @@ public class ChappieRESTClient implements AIClient {
     }
 
     @Override
-    public CompletableFuture<GenerationOutput> generateSource(Optional<String> systemMessage, String userMessage,
-            String sourceCode) {
+    public CompletableFuture<GenerationOutput> generate(Optional<String> systemMessage, String userMessage,
+            String path, String content) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("source", sourceCode));
-            return send("generateSource", jsonPayload, GenerationOutput.class);
+                    Map.of("path", path, "content", content));
+            return send("generate", jsonPayload, GenerationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<GenerationOutput> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);

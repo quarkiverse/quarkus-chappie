@@ -8,7 +8,7 @@ import java.util.Optional;
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappieConfig;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
-import io.quarkiverse.chappie.deployment.SourceCodeFinder;
+import io.quarkiverse.chappie.deployment.ContentIO;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -61,8 +61,8 @@ class ExplanationDevUIProcessor {
             buildItemActions.addAction("getSourceCode", (Map<String, String> param) -> {
                 if (param.containsKey("className")) {
                     String className = param.get("className");
-                    Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, className);
-                    return SourceCodeFinder.getSourceCode(sourcePath);
+                    Path sourcePath = ContentIO.getSourceCodePath(srcMainJava, className);
+                    return ContentIO.readContents(sourcePath);
                 }
                 return null;
             });
@@ -71,8 +71,8 @@ class ExplanationDevUIProcessor {
                 if (param.containsKey("className")) {
                     String className = param.get("className");
 
-                    Path sourcePath = SourceCodeFinder.getSourceCodePath(srcMainJava, className);
-                    String sourceCode = SourceCodeFinder.getSourceCode(sourcePath);
+                    Path sourcePath = ContentIO.getSourceCodePath(srcMainJava, className);
+                    String sourceCode = ContentIO.readContents(sourcePath);
 
                     if (sourceCode != null) {
                         AIClient aiClient = aiBuildItem.getAIClient();

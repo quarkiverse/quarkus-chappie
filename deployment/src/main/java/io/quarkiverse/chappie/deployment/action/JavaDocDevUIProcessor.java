@@ -1,16 +1,12 @@
 package io.quarkiverse.chappie.deployment.action;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
-import io.quarkiverse.chappie.deployment.SourceCodeFinder;
-import io.quarkiverse.chappie.deployment.sourceoperation.SourceManipulationBuildItem;
+import io.quarkiverse.chappie.deployment.ContentIO;
+import io.quarkiverse.chappie.deployment.workspace.ManipulationBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -23,33 +19,28 @@ class JavaDocDevUIProcessor {
 
     @BuildStep
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
-            BuildProducer<SourceManipulationBuildItem> sourceManipulationProducer,
+            BuildProducer<ManipulationBuildItem> manipulationProducer,
             AIBuildItem aiBuildItem) {
         if (chappieAvailable.isPresent()) {
-            sourceManipulationProducer
-                    .produce(new SourceManipulationBuildItem("Add JavaDoc", (Map<String, String> params) -> {
+            manipulationProducer
+                    .produce(new ManipulationBuildItem("Add JavaDoc", (Map<String, String> params) -> {
                         if (params.containsKey("path")) {
                             String path = params.get("path");
-                            try {
-                                Path sourcePath = Paths.get(new URI(path));
-                                String sourceCode = SourceCodeFinder.getSourceCode(sourcePath);
-                                if (sourceCode != null) {
-                                    AIClient aiClient = aiBuildItem.getAIClient();
-                                    CompletableFuture<AIFileResponse> response = aiClient
-                                            .manipulateSource(Optional.of(SYSTEM_MESSAGE), USER_MESSAGE, sourceCode)
-                                            .thenApply(
-                                                    contents -> new AIFileResponse(sourcePath, contents.manipulatedSource()));
-                                    return response;
-                                }
-                            } catch (URISyntaxException ex) {
-                                throw new RuntimeException(ex);
+                            String content = ContentIO.readContents(path);
+                            if (content != null) {
+                                AIClient aiClient = aiBuildItem.getAIClient();
+                                CompletableFuture<AIFileResponse> response = aiClient
+                                        .manipulate(Optional.of(SYSTEM_MESSAGE), USER_MESSAGE, path, content)
+                                        .thenApply(
+                                                contents -> new AIFileResponse(path, contents.manipulatedContent()));
+                                return response;
                             }
                         }
                         return null;
-                    }));
+                    }, Patterns.JAVA_ANY));
         }
     }
 
     private static final String SYSTEM_MESSAGE = "Your job is to add JavaDoc on Class and Method level for the provided code.";
-    private static final String USER_MESSAGE = "Please add or modify the JavaDoc to reflect the code.";
+    private static final String USER_MESSAGE = "Please add or modify the JavaDoc to reflect the code. If JavaDoc exist, take that into account when modifying the content";
 }

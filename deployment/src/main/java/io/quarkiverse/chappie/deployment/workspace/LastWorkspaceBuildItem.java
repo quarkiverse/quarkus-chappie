@@ -1,15 +1,15 @@
-package io.quarkiverse.chappie.deployment.sourceoperation;
+package io.quarkiverse.chappie.deployment.workspace;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.quarkus.builder.item.SimpleBuildItem;
 
-public final class LastSourceOperationBuildItem extends SimpleBuildItem {
+public final class LastWorkspaceBuildItem extends SimpleBuildItem {
     private final AtomicReference<Object> lastResponse;
     private final AtomicReference<Path> path;
 
-    public LastSourceOperationBuildItem(AtomicReference<Object> lastResponse, AtomicReference<Path> path) {
+    public LastWorkspaceBuildItem(AtomicReference<Object> lastResponse, AtomicReference<Path> path) {
         this.lastResponse = lastResponse;
         this.path = path;
     }

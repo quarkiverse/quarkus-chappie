@@ -89,7 +89,7 @@ class ConsoleProcessor {
                                 return;
                             }
 
-                            String sourceString = SourceCodeFinder.getSourceCode(srcMainJava,
+                            String sourceString = ContentIO.getSourceCode(srcMainJava,
                                     lastException.stackTraceElement());
 
                             String stacktraceString = lastException.getStackTraceString();

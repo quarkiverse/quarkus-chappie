@@ -1,24 +1,27 @@
-package io.quarkiverse.chappie.deployment.sourceoperation;
+package io.quarkiverse.chappie.deployment.workspace;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.quarkus.builder.item.MultiBuildItem;
 
-public abstract class AbstractSourceOperationBuildItem extends MultiBuildItem {
+public abstract class AbstractWorkspaceBuildItem extends MultiBuildItem {
     private final String label;
     private final String methodName;
+    private final Optional<Pattern> filter;
     private final Function<Map<String, String>, ?> action;
 
-    public AbstractSourceOperationBuildItem(String label, Function<Map<String, String>, ?> action) {
+    public AbstractWorkspaceBuildItem(String label, Function<Map<String, String>, ?> action, Optional<Pattern> filter) {
         this.label = label;
         this.methodName = generateMethodName(label);
         this.action = action;
+        this.filter = filter;
     }
 
     public String getLabel() {
@@ -31,6 +34,10 @@ public abstract class AbstractSourceOperationBuildItem extends MultiBuildItem {
 
     public Function<Map<String, String>, ?> getAction() {
         return this.action;
+    }
+
+    public Optional<Pattern> getFilter() {
+        return filter;
     }
 
     private String generateMethodName(String label) {

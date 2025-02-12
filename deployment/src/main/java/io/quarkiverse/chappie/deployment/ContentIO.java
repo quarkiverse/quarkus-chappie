@@ -3,10 +3,33 @@ package io.quarkiverse.chappie.deployment;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class SourceCodeFinder {
+public class ContentIO {
+
+    public static String readContents(String path) {
+        try {
+            return ContentIO.readContents(Paths.get(new URI(path)));
+        } catch (URISyntaxException ex) {
+            throw new UncheckedIOException(new IOException(ex));
+        }
+    }
+
+    public static String readContents(Path filePath) {
+        if (filePath != null && Files.exists(filePath)) {
+            try {
+                return Files.readString(filePath);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+        }
+
+        return null;
+    }
 
     public static String getSourceCode(Path srcMainJava, StackTraceElement stackTraceElement) {
 
@@ -35,18 +58,6 @@ public class SourceCodeFinder {
 
             return srcMainJava.resolve(file);
         }
-        return null;
-    }
-
-    public static String getSourceCode(Path filePath) {
-        if (filePath != null && Files.exists(filePath)) {
-            try {
-                return Files.readString(filePath);
-            } catch (IOException ex) {
-                throw new UncheckedIOException(ex);
-            }
-        }
-
         return null;
     }
 
