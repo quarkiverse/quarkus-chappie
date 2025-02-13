@@ -29,9 +29,9 @@ class ExplanationDevUIProcessor {
                             String contents = ContentIO.readContents(path);
                             if (contents != null) {
                                 AIClient aiClient = aiBuildItem.getAIClient();
-                                CompletableFuture<AIMarkdownResponse> response = aiClient
+                                CompletableFuture<AIResponse> response = aiClient
                                         .interpret(USER_MESSAGE, path, contents)
-                                        .thenApply(c -> new AIMarkdownResponse(c.interpretedContent()));
+                                        .thenApply(c -> new AIResponse(c.interpretedContent()));
                                 return response;
                             }
                         }

@@ -1,19 +1,21 @@
-import { LitElement, html, css} from 'lit'; 
+import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { JsonRpc } from 'jsonrpc';
-import '@vaadin/accordion';
+import '@vaadin/details';
 import '@vaadin/button';
 import '@vaadin/progress-bar';
 import 'qui-ide-link';
+import '@vaadin/dialog';
+import '@vaadin/confirm-dialog';
 import '@qomponent/qui-code-block';
 import { observeState } from 'lit-element-state';
 import { themeState } from 'theme-state';
 import { notifier } from 'notifier';
-import { devuiState } from 'devui-state';
+import { dialogFooterRenderer, dialogRenderer } from '@vaadin/dialog/lit.js';
 
 /**
  * This component shows the last exception
  */
-export class QwcChappieException extends observeState(LitElement) { 
+export class QwcChappieException extends observeState(QwcHotReloadElement) { 
     jsonRpc = new JsonRpc(this);
 
     static styles = css`
@@ -33,10 +35,6 @@ export class QwcChappieException extends observeState(LitElement) {
             flex-direction: column;
             height: 100%;
             padding-top: 20px;
-        }
-        .heading-fix {
-            color: var(--lumo-success-color);
-            font-size: x-large; 
         }
         .stacktrace {
             color: var(--lumo-error-color);
@@ -66,12 +64,6 @@ export class QwcChappieException extends observeState(LitElement) {
             font-family: var(--lumo-font-family);
             font-size: var(--lumo-font-size-s);
             padding-right: 10px;
-        }
-        .codeBlockHeader {
-            display: flex;
-            width: 100%;
-            justify-content: space-between;
-            align-items: baseline;
         }
     `;
     
@@ -105,6 +97,11 @@ export class QwcChappieException extends observeState(LitElement) {
         }
     }
 
+    hotReload(){
+        this._lastException = null;
+        this._checkLastException();
+    }
+
     disconnectedCallback() {
         if(this._observer)this._observer.cancel();
         super.disconnectedCallback();      
@@ -114,25 +111,116 @@ export class QwcChappieException extends observeState(LitElement) {
         if (this._lastException) {
             return html`${this._renderButtons()}
                         ${this._renderException()}
-                        ${this._renderSuggestedFix()}`;
+                        ${this._renderLoadingDialog()}
+                        ${this._renderAIResponseDialog()}`;
         } else {
             return html`<div class="nothing">No exception detected yet. <span class="checkNow" @click="${this._checkLastException}">Check now</span></div>`;
         }
     }
     
+    _renderLoadingDialog(){
+        if(this._showProgressBar) {
+            return html`<vaadin-confirm-dialog
+                            header="Talking to AI..."
+                            confirm-text="Cancel"
+                            confirm-theme="error secondary"
+                            .opened="${this._showProgressBar}"
+                            @confirm="${this._termTalkToAI}">
+                            ${this._renderLoadingDialogContent()}
+                        </vaadin-confirm-dialog>`;
+        }
+    }
+    
+    _renderLoadingDialogContent(){
+        return html`<div class="progress">
+                            <vaadin-progress-bar
+                                indeterminate
+                                aria-labelledby="pblbl"
+                                aria-describedby="sublbl"
+                            ></vaadin-progress-bar>
+                            <span class="text-secondary text-xs" id="sublbl">
+                                This can take a while, please hold
+                            </span>
+                        </div>`;
+    }
+    
+    _renderAIResponseDialog(){
+        if(this._suggestedFix) {
+            return html`<vaadin-dialog
+                            header-title="Suggested fix from AI"
+                            resizable
+                            draggable
+                            .opened="${this._suggestedFix}"
+                            @opened-changed="${this._aiResponseDialogOpenChanged}"
+                            ${dialogRenderer(this._renderAIResponseDialogContent, [])}
+                            ${dialogFooterRenderer(this._renderAIResponseDialogFooter, [])}
+                        ></vaadin-dialog>`;
+        }
+    }
+    
+    _aiResponseDialogOpenChanged(event) {
+        if (this._suggestedFix && event.detail.value === false) {
+            // Prevent the dialog from closing
+            event.preventDefault();
+            event.target.opened = true;
+        }
+    }
+    
+    _renderAIResponseDialogContent(){
+        return html`<div class="fix">
+                            <p>${this._suggestedFix.response}</p>
+
+                            <p>${this._suggestedFix.explanation}</p>
+
+                            <vaadin-details summary="Diff">
+                                <div class="codeBlock">
+                                    <qui-code-block
+                                        mode='diff'
+                                        theme='${themeState.theme.name}'>
+                                        <slot>${this._suggestedFix.diff}</slot>
+                                    </qui-code-block>
+                                </div>
+                            </vaadin-details>    
+
+                            <h4>Suggested new code:</h4>
+                            
+                            <div class="codeBlock">
+                                <qui-code-block
+                                    mode='java'
+                                    theme='${themeState.theme.name}'>
+                                    <slot>${this._suggestedFix.manipulatedContent}</slot>
+                                </qui-code-block>
+                            </div>
+                            
+                        </div>`;
+    }
+    
+    _renderAIResponseDialogFooter(){
+        return html`<div style="margin-right: auto;">
+                        <vaadin-button theme="primary" @click="${this._applyFix}">
+                            <vaadin-icon icon="font-awesome-solid:floppy-disk"></vaadin-icon>
+                            Save
+                        </vaadin-button>
+                        <vaadin-button theme="secondary" @click="${this._copyFix}"> 
+                            <vaadin-icon icon="font-awesome-solid:copy"></vaadin-icon>
+                            Copy
+                        </vaadin-button>
+                    </div>
+                    <vaadin-button theme="tertiary" @click="${this._clearAIResponseDialog}">
+                        <vaadin-icon icon="font-awesome-solid:trash-can"></vaadin-icon>
+                        Discard
+                    </vaadin-button>`;
+    }
+    
+    _clearAIResponseDialog(){
+        this._suggestedFix = null;
+    }
+    
     _renderException(){
-        return html`<vaadin-accordion>
-                        <vaadin-accordion-panel summary="Code" theme="filled">
-                            <div class="exception">
-                                <pre class="stacktrace">${this._lastException.decorateString}</pre>
-                            </div>
-                        </vaadin-accordion-panel>
-                        <vaadin-accordion-panel summary="Stacktrace" theme="filled">
-                            <div class="exception">
-                                <pre class="stacktrace">${this._lastException.stackTraceString}</pre>
-                            </div>
-                        </vaadin-accordion-panel>
-                    </vaadin-accordion>`;
+        return html`<div class="exception">
+                        <pre class="stacktrace">${this._lastException.decorateString}</pre>
+                        <pre class="stacktrace">${this._lastException.stackTraceString}</pre>
+                    </div>`;
     }
     
     _renderButtons(){
@@ -155,52 +243,14 @@ export class QwcChappieException extends observeState(LitElement) {
         }
     }
     
-    _renderSuggestedFix(){
-        if(this._showProgressBar){
-            return html`<div class="fix">
-                            <label class="text-secondary" id="pblbl">Talking to AI...</label>
-                            <vaadin-progress-bar
-                                indeterminate
-                                aria-labelledby="pblbl"
-                                aria-describedby="sublbl"
-                            ></vaadin-progress-bar>
-                            <span class="text-secondary text-xs" id="sublbl">
-                                This can take a while, please hold
-                            </span>
-                        </div>`;
-        }else if(this._suggestedFix){
-            return html`<div class="fix">
-                            <span class="heading-fix">
-                                Suggested fix from AI
-                            </span>
-                            <p>${this._suggestedFix.response}</p>
-
-                            <p>${this._suggestedFix.explanation}</p>
-
-                            <h4>Diff:</h4>
-                            <div class="codeBlock">
-                                <qui-code-block
-                                    mode='diff'
-                                    theme='${themeState.theme.name}'>
-                                    <slot>${this._suggestedFix.diff}</slot>
-                                </qui-code-block>
-                            </div>
-                            
-                            <div class="codeBlockHeader">
-                                <h4>Suggested new code:</h4>
-                                <vaadin-button theme="primary small" @click="${this._applyFix}">Apply fix to your code</vaadin-button>
-                            </div>
-                            
-                            <div class="codeBlock">
-                                <qui-code-block
-                                    mode='java'
-                                    theme='${themeState.theme.name}'>
-                                    <slot>${this._suggestedFix.manipulatedContent}</slot>
-                                </qui-code-block>
-                            </div>
-                            
-                        </div>`;
-        }
+    _initTalkToAI(){
+        this._showProgressBar = true;
+        document.body.style.cursor = 'progress';
+    }
+    
+    _termTalkToAI(){
+        this._showProgressBar = false;
+        document.body.style.cursor = 'default'; 
     }
     
     _checkLastException(){
@@ -212,36 +262,38 @@ export class QwcChappieException extends observeState(LitElement) {
     }
     
     _suggestFix(){
-        this._showProgressBar = true;
+        this._initTalkToAI()
         // Get the current last know exception
-        this.jsonRpc.suggestFix().then(jsonRpcResponse => { 
-            this._showProgressBar = false;
-            this._suggestedFix = jsonRpcResponse.result;
+        this.jsonRpc.suggestFix().then(jsonRpcResponse => {
+            if(this._showProgressBar){
+                this._suggestedFix = jsonRpcResponse.result;
+            }
+            this._termTalkToAI();
         });
-        this._scrollToBottom();
     }
     
     _applyFix(){
         this.jsonRpc.applyFix().then(jsonRpcResponse => { 
-            fetch(devuiState.applicationInfo.contextRoot);
             notifier.showInfoMessage("Updated " + jsonRpcResponse.result);
+            this._clearAIResponseDialog();
+            super.forceRestart();
         });
     }
     
-    async _scrollToBottom(){
+    _copyFix(){
+        const content = this._suggestedFix?.manipulatedContent;
+        if (!content) {
+            notifier.showWarningMessage("There is no content");
+            return;
+        }
         
-        await this.updateComplete;
-
-        const last = Array.from(
-            this.shadowRoot.querySelectorAll('.fix')
-        ).pop();
-
-        if(last){
-            last.scrollIntoView({
-                behavior: "smooth",
-                block: "end"
+        navigator.clipboard.writeText(content)
+            .then(() => {
+                notifier.showInfoMessage("Content copied to clipboard");
+            })
+            .catch(err => {
+                notifier.showErrorMessage("Failed to copy content:" + err);
             });
-        }    
     }
 }
 customElements.define('qwc-chappie-exception', QwcChappieException);

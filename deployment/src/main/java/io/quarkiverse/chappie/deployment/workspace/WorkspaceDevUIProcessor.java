@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -93,15 +92,7 @@ class WorkspaceDevUIProcessor {
                     String content = param.get("content");
                     String pathParam = param.get("path");
                     Path path = Path.of(URI.create(pathParam));
-                    try {
-                        Files.createDirectories(path.getParent());
-                        if (!Files.exists(path))
-                            Files.createFile(path);
-                        Files.writeString(path, content, StandardOpenOption.TRUNCATE_EXISTING,
-                                StandardOpenOption.CREATE);
-                    } catch (IOException ex) {
-                        return new SavedResult(path, false, ex.getMessage());
-                    }
+                    ContentIO.writeContent(path, content);
                     return new SavedResult(path, true, null);
                 }
                 throw new RuntimeException("Invalid input");

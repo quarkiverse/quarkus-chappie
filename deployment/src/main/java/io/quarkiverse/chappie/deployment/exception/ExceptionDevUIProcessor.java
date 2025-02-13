@@ -1,18 +1,9 @@
 package io.quarkiverse.chappie.deployment.exception;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
@@ -140,29 +131,12 @@ class ExceptionDevUIProcessor {
 
             // This suggest fix based on exception and code
             buildItemActions.addAction("applyFix", code -> {
-                String json = (String) lastSolutionBuildItem.getLastSolution().get();
+                ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
                 Path path = lastSolutionBuildItem.getPath().get();
-                try (StringReader r = new StringReader(json)) {
-                    if (json != null && path != null) {
-                        ObjectMapper mapper = new ObjectMapper();
-                        TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
-                        };
-
-                        try {
-                            HashMap<String, Object> object = mapper.readValue(r, typeRef);
-
-                            if (object.containsKey("suggestedSource")) {
-                                String newCode = (String) object.get("suggestedSource");
-
-                                Files.writeString(path, newCode, StandardOpenOption.TRUNCATE_EXISTING,
-                                        StandardOpenOption.CREATE);
-                                return path.toString();
-
-                            }
-                        } catch (IOException ex) {
-                            throw new UncheckedIOException(ex);
-                        }
-                    }
+                if (exceptionOutput != null && path != null) {
+                    lastSolutionBuildItem.getLastSolution().set(null);
+                    lastSolutionBuildItem.getPath().set(null);
+                    return ContentIO.writeContent(path, exceptionOutput.manipulatedContent());
                 }
                 return null;
             });
