@@ -13,8 +13,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkiverse.chappie.deployment.devservice.ollama.OllamaBuildItem;
-import io.quarkiverse.chappie.deployment.method.exception.LastException;
-import io.quarkiverse.chappie.deployment.method.exception.LastExceptionBuildItem;
+import io.quarkiverse.chappie.deployment.exception.LastException;
+import io.quarkiverse.chappie.deployment.exception.LastExceptionBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;

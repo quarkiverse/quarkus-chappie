@@ -11,7 +11,9 @@ import java.util.concurrent.CompletableFuture;
 
 import io.quarkiverse.chappie.deployment.JsonObjectCreator;
 import io.quarkus.deployment.dev.ai.AIClient;
+import io.quarkus.deployment.dev.ai.ExceptionOutput;
 import io.quarkus.deployment.dev.ai.GenerationOutput;
+import io.quarkus.deployment.dev.ai.InterpretationOutput;
 import io.quarkus.deployment.dev.ai.ManipulationOutput;
 
 public class ChappieRESTClient implements AIClient {
@@ -57,6 +59,37 @@ public class ChappieRESTClient implements AIClient {
             return send("generate", jsonPayload, GenerationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<GenerationOutput> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            return failedFuture;
+        }
+    }
+
+    @Override
+    public CompletableFuture<InterpretationOutput> interpret(Optional<String> systemMessage, String userMessage,
+            String path, String content) {
+
+        try {
+            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
+                    Map.of("path", path, "content", content));
+            return send("interpret", jsonPayload, InterpretationOutput.class);
+        } catch (Exception ex) {
+            CompletableFuture<InterpretationOutput> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            return failedFuture;
+        }
+
+    }
+
+    @Override
+    public CompletableFuture<ExceptionOutput> exception(Optional<String> systemMessage, String userMessage,
+            String stacktrace, String path, String content) {
+
+        try {
+            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
+                    Map.of("stacktrace", stacktrace, "path", path, "content", content));
+            return send("exception", jsonPayload, ExceptionOutput.class);
+        } catch (Exception ex) {
+            CompletableFuture<ExceptionOutput> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             return failedFuture;
         }

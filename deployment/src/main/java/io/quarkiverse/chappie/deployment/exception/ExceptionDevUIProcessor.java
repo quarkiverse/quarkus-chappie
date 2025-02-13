@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.method.exception;
+package io.quarkiverse.chappie.deployment.exception;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -7,8 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -19,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
+import io.quarkiverse.chappie.deployment.workspace.WorkspaceBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -28,7 +27,7 @@ import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.dev.ai.AIBuildItem;
 import io.quarkus.deployment.dev.ai.AIClient;
-import io.quarkus.deployment.logging.LoggingDecorateBuildItem;
+import io.quarkus.deployment.dev.ai.ExceptionOutput;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
 import io.quarkus.runtime.logging.DecorateStackUtil;
@@ -38,10 +37,7 @@ import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class ExceptionDevUIProcessor {
-    private static final String EXCEPTION_TITLE = "Help with the latest exception";
-
-    static volatile Path srcMainJava;
-    static volatile List<String> knownClasses;
+    private static final String EXCEPTION_TITLE = "Exception help";
 
     @BuildStep
     void createBroadcasters(BuildProducer<BroadcastsBuildItem> broadcastsProducer) {
@@ -53,13 +49,15 @@ class ExceptionDevUIProcessor {
     @BuildStep
     void setupBroadcaster(BuildProducer<ExceptionNotificationBuildItem> exceptionNotificationProducer,
             BroadcastsBuildItem broadcastsBuildItem,
-            LastExceptionBuildItem lastExceptionBuildItem) {
+            LastExceptionBuildItem lastExceptionBuildItem,
+            WorkspaceBuildItem workspaceBuildItem) {
 
         exceptionNotificationProducer
                 .produce(new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
                     @Override
                     public void accept(Throwable throwable, StackTraceElement stackTraceElement) {
-                        String decorateString = DecorateStackUtil.getDecoratedString(throwable, srcMainJava, knownClasses);
+                        String decorateString = DecorateStackUtil.getDecoratedString(stackTraceElement,
+                                workspaceBuildItem.getPaths());
                         LastException lastException = new LastException(stackTraceElement, throwable, decorateString);
                         broadcastsBuildItem.getLastExceptionBroadcastProcessor().onNext(lastException);
                         lastExceptionBuildItem.getLastException().set(lastException);
@@ -92,19 +90,14 @@ class ExceptionDevUIProcessor {
     @BuildStep
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
-            LoggingDecorateBuildItem loggingDecorateBuildItem,
+            WorkspaceBuildItem workspaceBuildItem,
             AIBuildItem aiBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
             LastSolutionBuildItem lastSolutionBuildItem) {
 
         if (chappieAvailable.isPresent()) {
-            if (srcMainJava == null) {
-                srcMainJava = loggingDecorateBuildItem.getSrcMainJava();
-            }
-            if (knownClasses == null) {
-                knownClasses = loggingDecorateBuildItem.getKnowClasses();
-            }
+
             BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
 
             // This gets the last know exception. For initial load.
@@ -125,21 +118,22 @@ class ExceptionDevUIProcessor {
             buildItemActions.addAction("suggestFix", ignored -> {
                 LastException lastException = lastExceptionBuildItem.getLastException().get();
                 if (lastException != null) {
-                    Path sourcePath = ContentIO.getSourceCodePath(srcMainJava, lastException.stackTraceElement());
-                    String sourceString = ContentIO.getSourceCode(srcMainJava, lastException.stackTraceElement());
-                    String stacktraceString = lastException.getStackTraceString();
+                    Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
+                            workspaceBuildItem.getPaths());
 
                     AIClient aiClient = aiBuildItem.getAIClient();
-
-                    CompletableFuture<String> response = aiClient
-                            .request("exception", Map.of("stacktrace", stacktraceString, "source", sourceString));
-
-                    response.thenAccept((suggestedFix) -> {
-                        lastSolutionBuildItem.getLastSolution().set(suggestedFix);
-                        lastSolutionBuildItem.getPath().set(sourcePath);
-                    });
-
-                    return response;
+                    if (sourcePath != null) {
+                        String sourceString = ContentIO.readContents(sourcePath);
+                        String stacktraceString = lastException.getStackTraceString();
+                        CompletableFuture<ExceptionOutput> response = aiClient
+                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath.toString(),
+                                        sourceString);
+                        response.thenAccept((suggestedFix) -> {
+                            lastSolutionBuildItem.getLastSolution().set(suggestedFix);
+                            lastSolutionBuildItem.getPath().set(sourcePath);
+                        });
+                        return response;
+                    } // TODO: We can still attempt this if we could not find a relevant file
                 }
                 return null;
             });
@@ -176,4 +170,5 @@ class ExceptionDevUIProcessor {
             buildTimeActionProducer.produce(buildItemActions);
         }
     }
+
 }

@@ -180,7 +180,7 @@ export class QwcChappieException extends observeState(LitElement) {
                             <h4>Diff:</h4>
                             <div class="codeBlock">
                                 <qui-code-block
-                                    mode='java'
+                                    mode='diff'
                                     theme='${themeState.theme.name}'>
                                     <slot>${this._suggestedFix.diff}</slot>
                                 </qui-code-block>
@@ -195,7 +195,7 @@ export class QwcChappieException extends observeState(LitElement) {
                                 <qui-code-block
                                     mode='java'
                                     theme='${themeState.theme.name}'>
-                                    <slot>${this._suggestedFix.suggestedSource}</slot>
+                                    <slot>${this._suggestedFix.manipulatedContent}</slot>
                                 </qui-code-block>
                             </div>
                             
@@ -216,9 +216,7 @@ export class QwcChappieException extends observeState(LitElement) {
         // Get the current last know exception
         this.jsonRpc.suggestFix().then(jsonRpcResponse => { 
             this._showProgressBar = false;
-            this._suggestedFix = JSON.parse(jsonRpcResponse.result);
-            console.log(jsonRpcResponse.result);
-            
+            this._suggestedFix = jsonRpcResponse.result;
         });
         this._scrollToBottom();
     }

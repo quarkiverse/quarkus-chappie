@@ -9,6 +9,8 @@ import '@vaadin/menu-bar';
 import '@vaadin/tooltip';
 import '@qomponent/qui-code-block';
 import '@qomponent/qui-directory-tree';
+import MarkdownIt from 'markdown-it';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { observeState } from 'lit-element-state';
 import { themeState } from 'theme-state';
 import { dialogFooterRenderer, dialogRenderer } from '@vaadin/dialog/lit.js';
@@ -80,11 +82,13 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         _showTalkToAiProgressBar: {state: true},
         
         _selectedWorkspaceItem: {state: true},
-        _generatedResource: {state: true}
+        _generatedResource: {state: true},
+        _markdownContent: {state: true}
     };
 
     constructor() { 
         super();
+        this.md = new MarkdownIt();
         this._workspaceItems = null;
         this._workspaceTreeNames = null;
         
@@ -94,6 +98,7 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         
         this._clearSelectedWorkspaceItem();
         this._clearGeneratedContent();
+        this._clearMarkdownContent();
     }
 
     connectedCallback() {
@@ -111,6 +116,10 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
     }
 
     disconnectedCallback() {
+        if(this._generatedResource.contents){
+            console.log("There are unsave changes");
+        }
+        
         super.disconnectedCallback();      
     }
 
@@ -124,6 +133,7 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                         </div>
                         ${this._renderLoadingDialog()}
                         ${this._renderGeneratedDialog()}
+                        ${this._renderMarkdownDialog()}
                         `;
         } else {
             return html`<div class="nothing">No code found. <span class="checkNow" @click="${this.hotReload}">Check now</span></div>`;
@@ -163,14 +173,36 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                             resizable
                             draggable
                             .opened="${this._generatedResource.contents}"
-                            @opened-changed="${this._sourceDialogOpenChanged}"
+                            @opened-changed="${this._generatedDialogOpenChanged}"
                             ${dialogRenderer(this._renderGeneratedDialogContent, [])}
                             ${dialogFooterRenderer(this._renderGeneratedDialogFooter, [])}
                         ></vaadin-dialog>`;
         }
     }
     
-    _sourceDialogOpenChanged(event) {
+    _renderMarkdownDialog(){
+        if(this._markdownContent.contents) {
+            return html`<vaadin-dialog
+                            header-title="AI response"
+                            resizable
+                            draggable
+                            .opened="${this._markdownContent.contents}"
+                            @opened-changed="${this._markdownDialogOpenChanged}"
+                            ${dialogRenderer(this._renderMarkdownDialogContent, [])}
+                            ${dialogFooterRenderer(this._renderMarkdownDialogFooter, [])}
+                        ></vaadin-dialog>`;
+        }
+    }
+    
+    _markdownDialogOpenChanged(event) {
+        if (this._markdownContent.contents && event.detail.value === false) {
+            // Prevent the dialog from closing
+            event.preventDefault();
+            event.target.opened = true;
+        }
+    }
+    
+    _generatedDialogOpenChanged(event) {
         if (this._generatedResource.path && event.detail.value === false) {
             // Prevent the dialog from closing
             event.preventDefault();
@@ -253,6 +285,19 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                     </vaadin-button>`;
     }
     
+    _renderMarkdownDialogFooter(){
+        return html`<div style="margin-right: auto;">
+                        <vaadin-button theme="secondary" @click="${this._copyMarkdownContent}"> 
+                            <vaadin-icon icon="font-awesome-solid:copy"></vaadin-icon>
+                            Copy
+                        </vaadin-button>
+                    </div>
+                    <vaadin-button theme="tertiary" @click="${this._clearMarkdownContent}">
+                        <vaadin-icon icon="font-awesome-solid:trash-can"></vaadin-icon>
+                        Discard
+                    </vaadin-button>`;
+    }
+    
     _saveGeneratedContent(){
         this.jsonRpc.saveWorkspaceItemContent({content:this._generatedResource.contents, path:this._generatedResource.path}).then(jsonRpcResponse => { 
             if(jsonRpcResponse.result.success){
@@ -282,8 +327,25 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
             });
     }
     
+    _copyMarkdownContent(){
+        const content = this._markdownContent?.contents;
+        if (!content) {
+            notifier.showWarningMessage("There is no content");
+            return;
+        }
+        
+        navigator.clipboard.writeText(content)
+            .then(() => {
+                notifier.showInfoMessage("Content copied to clipboard");
+            })
+            .catch(err => {
+                notifier.showErrorMessage("Failed to copy content:" + err);
+            });
+    }
+    
     _renderGeneratedDialogContent(){
         console.log(JSON.stringify(this._generatedResource));
+        // TODO: Get the file type of the generated content
         return html`<div class="codeBlock">
                         <qui-code-block
                             mode='java'
@@ -292,6 +354,11 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                             showLineNumbers>
                         </qui-code-block>
                     </div>`;
+    }
+    
+    _renderMarkdownDialogContent(){
+        const htmlContent = this.md.render(this._markdownContent.contents);
+        return html`<div class="markdown">${unsafeHTML(htmlContent)}</div>`;
     }
     
     _renderActions(){
@@ -311,6 +378,8 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                     this._selectedWorkspaceItem = { ...this._selectedWorkspaceItem, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
                 }else if(e.detail.value.actionType === "Generation"){
                     this._generatedResource = { ...this._generatedResource, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
+                }else if(e.detail.value.actionType === "Interpretation"){
+                    this._markdownContent = { ...this._markdownContent, contents: jsonRpcResponse.result.contents};
                 }
                 this._termTalkToAI(); 
             }
@@ -338,6 +407,10 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
     
     _clearGeneratedContent(){
         this._generatedResource = { name: null, path: null, contents: null, isDirty: false };
+    }
+    
+    _clearMarkdownContent(){
+        this._markdownContent = { name: null, contents: null};
     }
     
     _selectWorkspaceItem(workspaceItem){
@@ -391,8 +464,11 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         this._filteredActions = this._actions.map(actionGroup => {
         
             const filteredChildren = actionGroup.children.filter(child => {
-                const regex = new RegExp(child.pattern);
-                return regex.test(name);
+                if(child.pattern){
+                    const regex = new RegExp(child.pattern);
+                    return regex.test(name);
+                }
+                return true;
             });
 
             if (filteredChildren.length > 0) {

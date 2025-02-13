@@ -24,9 +24,6 @@ import io.quarkus.deployment.pkg.builditem.BuildSystemTargetBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
 
-// TODO Action
-// Regex action
-
 @BuildSteps(onlyIf = IsDevelopment.class)
 class WorkspaceDevUIProcessor {
 
@@ -67,6 +64,7 @@ class WorkspaceDevUIProcessor {
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             List<ManipulationBuildItem> manipulationBuildItems,
             List<GenerationBuildItem> generationBuildItems,
+            List<InterpretationBuildItem> interpretationBuildItems,
             WorkspaceBuildItem workspaceBuildItem,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             AIBuildItem aiBuildItem,
@@ -124,6 +122,14 @@ class WorkspaceDevUIProcessor {
                         .add(new Action(generation.getLabel(), generation.getMethodName(),
                                 ActionType.Generation, generation.getFilter()));
                 buildItemActions.addAction(generation.getMethodName(), generation.getAction());
+            }
+
+            // interpretation
+            for (InterpretationBuildItem interpretation : interpretationBuildItems) {
+                actions
+                        .add(new Action(interpretation.getLabel(), interpretation.getMethodName(),
+                                ActionType.Interpretation, interpretation.getFilter()));
+                buildItemActions.addAction(interpretation.getMethodName(), interpretation.getAction());
             }
 
             buildItemActions.addAction("getActions", (Map<String, String> param) -> {
