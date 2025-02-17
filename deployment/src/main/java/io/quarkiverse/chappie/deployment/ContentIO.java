@@ -3,22 +3,11 @@ package io.quarkiverse.chappie.deployment;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class ContentIO {
-
-    public static String writeContent(String path, String contents) {
-        try {
-            return ContentIO.writeContent(Paths.get(new URI(path)), contents);
-        } catch (URISyntaxException ex) {
-            throw new UncheckedIOException(new IOException(ex));
-        }
-    }
 
     public static String writeContent(Path path, String contents) {
         try {
@@ -30,14 +19,6 @@ public class ContentIO {
             return path.toString();
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
-        }
-    }
-
-    public static String readContents(String path) {
-        try {
-            return ContentIO.readContents(Paths.get(new URI(path)));
-        } catch (URISyntaxException ex) {
-            throw new UncheckedIOException(new IOException(ex));
         }
     }
 

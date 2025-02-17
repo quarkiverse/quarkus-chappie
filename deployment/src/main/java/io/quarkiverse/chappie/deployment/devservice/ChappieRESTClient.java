@@ -5,6 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -38,10 +39,10 @@ public class ChappieRESTClient implements AIClient {
 
     @Override
     public CompletableFuture<ManipulationOutput> manipulate(Optional<String> systemMessage, String userMessage,
-            String path, String content) {
+            Path path, String content) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("path", path, "content", content));
+                    Map.of("path", path.toString(), "content", content));
             return send("manipulate", jsonPayload, ManipulationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<ManipulationOutput> failedFuture = new CompletableFuture<>();
@@ -52,10 +53,10 @@ public class ChappieRESTClient implements AIClient {
 
     @Override
     public CompletableFuture<GenerationOutput> generate(Optional<String> systemMessage, String userMessage,
-            String path, String content) {
+            Path path, String content) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("path", path, "content", content));
+                    Map.of("path", path.toString(), "content", content));
             return send("generate", jsonPayload, GenerationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<GenerationOutput> failedFuture = new CompletableFuture<>();
@@ -66,11 +67,11 @@ public class ChappieRESTClient implements AIClient {
 
     @Override
     public CompletableFuture<InterpretationOutput> interpret(Optional<String> systemMessage, String userMessage,
-            String path, String content) {
+            Path path, String content) {
 
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("path", path, "content", content));
+                    Map.of("path", path.toString(), "content", content));
             return send("interpret", jsonPayload, InterpretationOutput.class);
         } catch (Exception ex) {
             CompletableFuture<InterpretationOutput> failedFuture = new CompletableFuture<>();
@@ -82,11 +83,11 @@ public class ChappieRESTClient implements AIClient {
 
     @Override
     public CompletableFuture<ExceptionOutput> exception(Optional<String> systemMessage, String userMessage,
-            String stacktrace, String path, String content) {
+            String stacktrace, Path path, String content) {
 
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
-                    Map.of("stacktrace", stacktrace, "path", path, "content", content));
+                    Map.of("stacktrace", stacktrace, "path", path.toString(), "content", content));
             return send("exception", jsonPayload, ExceptionOutput.class);
         } catch (Exception ex) {
             CompletableFuture<ExceptionOutput> failedFuture = new CompletableFuture<>();

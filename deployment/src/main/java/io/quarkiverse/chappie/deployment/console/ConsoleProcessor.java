@@ -39,14 +39,14 @@ class ConsoleProcessor {
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep
     void setupConsole(BuildProducer<FeatureBuildItem> featureProducer,
-            Optional<List<AIConsoleBuildItem>> aiConsoleBuildItems) {
+            List<AIConsoleBuildItem> aiConsoleBuildItems) {
 
-        if (aiConsoleBuildItems.isPresent()) {
+        if (!aiConsoleBuildItems.isEmpty()) {
             if (chappieConsoleContext == null) {
                 chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Assistant");
             }
 
-            ConsoleCommand[] consoleCommands = aiConsoleBuildItems.get().stream()
+            ConsoleCommand[] consoleCommands = aiConsoleBuildItems.stream()
                     .map(AIConsoleBuildItem::getConsoleCommand)
                     .toArray(ConsoleCommand[]::new);
 

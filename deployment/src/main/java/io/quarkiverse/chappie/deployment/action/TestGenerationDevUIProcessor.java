@@ -3,53 +3,27 @@ package io.quarkiverse.chappie.deployment.action;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
-import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
-import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkiverse.chappie.deployment.workspace.GenerationBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.AIBuildItem;
-import io.quarkus.deployment.dev.ai.AIClient;
+import io.quarkus.deployment.dev.ai.workspace.GenerationWorkspaceActionBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class TestGenerationDevUIProcessor {
 
     @BuildStep
-    void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
-            BuildProducer<GenerationBuildItem> generationProducer,
-            AIBuildItem aiBuildItem) {
-        if (chappieAvailable.isPresent()) {
-            generationProducer
-                    .produce(new GenerationBuildItem("Generate Test", (Map<String, String> params) -> {
-                        if (params.containsKey("path")) {
-                            String path = params.get("path");
-                            String contents = ContentIO.readContents(path);
-                            if (contents != null) {
-                                AIClient aiClient = aiBuildItem.getAIClient();
-                                CompletableFuture<AIFileResponse> response = aiClient
-                                        .generate(Optional.of(SYSTEM_MESSAGE), USER_MESSAGE, path, contents)
-                                        .thenApply(c -> new AIFileResponse(createTestPath(path),
-                                                c.generatedContent()));
-                                return response;
-                            }
-                        }
-                        return null;
-                    }, Patterns.JAVA_SRC));
-        }
-    }
+    void createBuildTimeActions(BuildProducer<GenerationWorkspaceActionBuildItem> generationActionProducer) {
+        generationActionProducer
+                .produce(new GenerationWorkspaceActionBuildItem("Generate Test", Optional.of(SYSTEM_MESSAGE), USER_MESSAGE,
+                        (Path contentPath) -> {
+                            String modifiedPath = contentPath.toString().replace(File.separator + "main" + File.separator,
+                                    File.separator + "test" + File.separator);
+                            return Paths.get(modifiedPath.substring(0, modifiedPath.length() - 5) + "Test.java");
 
-    private String createTestPath(String path) {
-        Path sourcePath = Paths.get(path);
-        String modifiedPath = sourcePath.toString().replace(File.separator + "main" + File.separator,
-                File.separator + "test" + File.separator);
-        String testPath = modifiedPath.substring(0, modifiedPath.length() - 5) + "Test.java";
-        return testPath;
+                        }, Patterns.JAVA_SRC));
     }
 
     private static final String SYSTEM_MESSAGE = "Your job is to generate test for the provided Quarkus source code. Make sure the solutions is done in the Quarkus recomended way";

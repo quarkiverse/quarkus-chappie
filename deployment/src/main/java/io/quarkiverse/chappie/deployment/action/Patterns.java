@@ -5,8 +5,6 @@ import java.util.regex.Pattern;
 
 /**
  * Common patterns for filters
- *
- * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
 public interface Patterns {
     public static Optional<Pattern> JAVA_ANY = Optional.of(Pattern.compile(".*\\.java$"));

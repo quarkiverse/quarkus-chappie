@@ -116,10 +116,6 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
     }
 
     disconnectedCallback() {
-        if(this._generatedResource.contents){
-            console.log("There are unsave changes");
-        }
-        
         super.disconnectedCallback();      
     }
 
@@ -344,7 +340,6 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
     }
     
     _renderGeneratedDialogContent(){
-        console.log(JSON.stringify(this._generatedResource));
         // TODO: Get the file type of the generated content
         return html`<div class="codeBlock">
                         <qui-code-block

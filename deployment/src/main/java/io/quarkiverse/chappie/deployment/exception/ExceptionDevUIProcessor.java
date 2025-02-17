@@ -123,7 +123,7 @@ class ExceptionDevUIProcessor {
                         String sourceString = ContentIO.readContents(sourcePath);
                         String stacktraceString = lastException.getStackTraceString();
                         CompletableFuture<ExceptionOutput> response = aiClient
-                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath.toString(),
+                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
                                         sourceString);
                         response.thenAccept((suggestedFix) -> {
                             lastSolutionBuildItem.getLastSolution().set(suggestedFix);
@@ -189,7 +189,7 @@ class ExceptionDevUIProcessor {
                             AIClient aiClient = aiBuildItem.getAIClient();
 
                             CompletableFuture<ExceptionOutput> response = aiClient
-                                    .exception("The stacktrace is a Java exception", stacktraceString, sourcePath.toString(),
+                                    .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
                                             sourceString);
 
                             response.thenAccept((exceptionOutput) -> {

@@ -1,5 +1,7 @@
 package io.quarkiverse.chappie.deployment.action;
 
-public record AIFileResponse(String path, String contents) {
+import java.nio.file.Path;
+
+public record AIFileResponse(Path path, String contents) {
 
 }
