@@ -40,7 +40,7 @@ public class JsonObjectCreator {
         }
     }
 
-    public static String getInput(String systemMessage, String userMessage, Map<String, String> params) {
+    public static String getInput(String systemMessage, String userMessage, Map<String, Object> params) {
         try {
 
             ObjectNode genericInputNode = commonInputNode.deepCopy();
@@ -50,10 +50,9 @@ public class JsonObjectCreator {
 
             ObjectNode inputNode = objectMapper.createObjectNode();
             inputNode.set("genericInput", genericInputNode);
+            ObjectNode paramsAsNode = objectMapper.valueToTree(params);
+            inputNode.setAll(paramsAsNode);
 
-            for (Map.Entry<String, String> kv : params.entrySet()) {
-                inputNode.put(kv.getKey(), kv.getValue());
-            }
             return objectMapper.writeValueAsString(inputNode);
         } catch (JsonProcessingException ex) {
             throw new RuntimeException(ex);

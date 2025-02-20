@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 import io.quarkiverse.chappie.deployment.JsonObjectCreator;
 import io.quarkus.deployment.dev.ai.AIClient;
+import io.quarkus.deployment.dev.ai.DynamicOutput;
 import io.quarkus.deployment.dev.ai.ExceptionOutput;
 import io.quarkus.deployment.dev.ai.GenerationOutput;
 import io.quarkus.deployment.dev.ai.InterpretationOutput;
@@ -23,18 +24,6 @@ public class ChappieRESTClient implements AIClient {
 
     public ChappieRESTClient(String baseUrl) {
         this.baseUrl = baseUrl;
-    }
-
-    @Override
-    public CompletableFuture<String> request(String method, Optional<String> extraContext, Map<String, String> params) {
-        try {
-            String jsonPayload = JsonObjectCreator.getInput(extraContext, params);
-            return send(method, jsonPayload);
-        } catch (Exception ex) {
-            CompletableFuture<String> failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(ex);
-            return failedFuture;
-        }
     }
 
     @Override
@@ -96,8 +85,18 @@ public class ChappieRESTClient implements AIClient {
         }
     }
 
-    private CompletableFuture<String> send(String method, String jsonPayload) {
-        return send(createHttpRequest(method, jsonPayload), String.class);
+    @Override
+    public CompletableFuture<DynamicOutput> dynamic(Optional<String> systemMessage, String userMessage,
+            Map<String, String> variables) {
+        try {
+            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage,
+                    Map.of("variables", variables));
+            return send("dynamic", jsonPayload, DynamicOutput.class);
+        } catch (Exception ex) {
+            CompletableFuture<DynamicOutput> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            return failedFuture;
+        }
     }
 
     private <T> CompletableFuture<T> send(String method, String jsonPayload, Class<T> responseType) {
@@ -116,7 +115,9 @@ public class ChappieRESTClient implements AIClient {
                             return JsonObjectCreator.getOutput(response.body(), responseType);
                         }
                     } else {
-                        throw new RuntimeException("Failed: HTTP error code : " + status);
+                        CompletableFuture<T> failedFuture = new CompletableFuture<>();
+                        failedFuture.completeExceptionally(new RuntimeException("Failed: HTTP error code : " + status));
+                        return failedFuture;
                     }
                 });
     }

@@ -369,11 +369,11 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         
         this.jsonRpc[e.detail.value.methodName]({name:this._selectedWorkspaceItem.name, path:this._selectedWorkspaceItem.path}).then(jsonRpcResponse => {
             if(this._showTalkToAiProgressBar) { // Else the user has canceled
-                if(e.detail.value.actionType === "Manipulation"){
+                if(e.detail.value.actionType === "Update"){
                     this._selectedWorkspaceItem = { ...this._selectedWorkspaceItem, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
-                }else if(e.detail.value.actionType === "Generation"){
+                }else if(e.detail.value.actionType === "Create"){
                     this._generatedResource = { ...this._generatedResource, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
-                }else if(e.detail.value.actionType === "Interpretation"){
+                }else if(e.detail.value.actionType === "Read"){
                     this._markdownContent = { ...this._markdownContent, contents: jsonRpcResponse.result.contents};
                 }
                 this._termTalkToAI(); 

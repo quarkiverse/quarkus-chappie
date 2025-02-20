@@ -1,22 +1,25 @@
 package io.quarkiverse.chappie.deployment.action;
 
-import java.util.Optional;
-
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.workspace.ManipulationWorkspaceActionBuildItem;
+import io.quarkus.deployment.dev.ai.workspace.Patterns;
+import io.quarkus.deployment.dev.ai.workspace.WorkspaceUpdateBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class JavaDocDevUIProcessor {
 
     @BuildStep
-    void createBuildTimeActions(BuildProducer<ManipulationWorkspaceActionBuildItem> manipulationProducer) {
+    void createWorkspaceActions(BuildProducer<WorkspaceUpdateBuildItem> workspaceUpdateProducer) {
 
-        manipulationProducer
-                .produce(new ManipulationWorkspaceActionBuildItem("Add JavaDoc", Optional.of(SYSTEM_MESSAGE), USER_MESSAGE,
-                        Patterns.JAVA_ANY));
+        workspaceUpdateProducer
+                .produce(WorkspaceUpdateBuildItem.builder()
+                        .label("Add JavaDoc")
+                        .systemMessage(SYSTEM_MESSAGE)
+                        .userMessage(USER_MESSAGE)
+                        .filter(Patterns.JAVA_ANY)
+                        .build());
 
     }
 

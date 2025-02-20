@@ -4,23 +4,21 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkiverse.chappie.deployment.console.AIConsoleBuildItem;
 import io.quarkiverse.chappie.deployment.workspace.WorkspaceBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
-import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
 import io.quarkus.deployment.dev.ai.AIBuildItem;
 import io.quarkus.deployment.dev.ai.AIClient;
+import io.quarkus.deployment.dev.ai.AIConsoleBuildItem;
 import io.quarkus.deployment.dev.ai.ExceptionOutput;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
@@ -29,7 +27,6 @@ import io.quarkus.runtime.logging.DecorateStackUtil;
 import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
 import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
-import io.vertx.core.Vertx;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class ExceptionDevUIProcessor {
@@ -150,62 +147,101 @@ class ExceptionDevUIProcessor {
             buildTimeActionProducer.produce(buildItemActions);
 
             // Also allow user to do this in the console
-            Vertx vertx = Vertx.vertx();
-            ConsoleCommand consoleCommand = new ConsoleCommand('a', "Help with the latest exception",
-                    new ConsoleCommand.HelpState(new Supplier<String>() {
-                        @Override
-                        public String get() {
-                            return MessageFormat.RED;
+
+            aiConsoleProducer.produce(AIConsoleBuildItem.builder()
+                    .description("Help with the latest exception")
+                    .key('a')
+                    .colorSupplier(() -> MessageFormat.RED)
+                    .stateSupplier(() -> getInitMessage(lastExceptionBuildItem))
+                    .function((AIClient aiClient) -> {
+                        LastException lastException = lastExceptionBuildItem.getLastException().get();
+                        if (lastException == null) {
+                            return CompletableFuture.completedFuture("");
                         }
-                    }, new Supplier<String>() {
-                        @Override
-                        public String get() {
-                            LastException lastException = lastExceptionBuildItem.getLastException().get();
-                            if (lastException == null) {
-                                return "none";
-                            }
-                            return lastException.throwable().getMessage();
-                        }
-                    }), new Runnable() {
-                        @Override
-                        public void run() {
-                            LastException lastException = lastExceptionBuildItem.getLastException().get();
-                            if (lastException == null) {
-                                return;
-                            }
 
-                            Path sourcePath = DecorateStackUtil.findAffectedPath(
-                                    lastException.stackTraceElement().getClassName(),
-                                    workspaceBuildItem.getPaths());
-                            String sourceString = ContentIO.readContents(sourcePath);
-                            String stacktraceString = lastException.getStackTraceString();
+                        Path sourcePath = DecorateStackUtil.findAffectedPath(
+                                lastException.stackTraceElement().getClassName(),
+                                workspaceBuildItem.getPaths());
+                        String sourceString = ContentIO.readContents(sourcePath);
+                        String stacktraceString = lastException.getStackTraceString();
 
-                            System.out.println("""
-                                    =========================================
-                                    Assisting with the exception, please wait""");
+                        return aiClient
+                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath, sourceString)
+                                .thenApply(exceptionOutput -> {
+                                    return "\n\n" + exceptionOutput.response() +
+                                            "\n\n" + exceptionOutput.explanation() +
+                                            "\n------ Diff ------ " +
+                                            "\n\n" + exceptionOutput.diff() +
+                                            "\n------ Suggested source ------ " +
+                                            "\n\n" + exceptionOutput.manipulatedContent();
+                                });
+                    })
+                    .build());
 
-                            long timer = vertx.setPeriodic(800, id -> System.out.print("."));
-
-                            AIClient aiClient = aiBuildItem.getAIClient();
-
-                            CompletableFuture<ExceptionOutput> response = aiClient
-                                    .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
-                                            sourceString);
-
-                            response.thenAccept((exceptionOutput) -> {
-                                vertx.cancelTimer(timer);
-                                System.out.println("\n\n" + exceptionOutput.response());
-                                System.out.println("\n\n" + exceptionOutput.explanation());
-                                System.out.println("\n------ Diff ------ ");
-                                System.out.println("\n\n" + exceptionOutput.diff());
-                                System.out.println("\n------ Suggested source ------ ");
-                                System.out.println("\n\n" + exceptionOutput.manipulatedContent());
-                            });
-                        }
-                    });
-            aiConsoleProducer.produce(new AIConsoleBuildItem(consoleCommand));
+            //            Vertx vertx = Vertx.vertx();
+            //            ConsoleCommand consoleCommand = new ConsoleCommand('a', "Help with the latest exception",
+            //                    new ConsoleCommand.HelpState(new Supplier<String>() {
+            //                        @Override
+            //                        public String get() {
+            //                            return MessageFormat.RED;
+            //                        }
+            //                    }, new Supplier<String>() {
+            //                        @Override
+            //                        public String get() {
+            //                            LastException lastException = lastExceptionBuildItem.getLastException().get();
+            //                            if (lastException == null) {
+            //                                return "none";
+            //                            }
+            //                            return lastException.throwable().getMessage();
+            //                        }
+            //                    }), new Runnable() {
+            //                        @Override
+            //                        public void run() {
+            //                            LastException lastException = lastExceptionBuildItem.getLastException().get();
+            //                            if (lastException == null) {
+            //                                return;
+            //                            }
+            //
+            //                            Path sourcePath = DecorateStackUtil.findAffectedPath(
+            //                                    lastException.stackTraceElement().getClassName(),
+            //                                    workspaceBuildItem.getPaths());
+            //                            String sourceString = ContentIO.readContents(sourcePath);
+            //                            String stacktraceString = lastException.getStackTraceString();
+            //
+            //                            System.out.println("""
+            //                                    =========================================
+            //                                    Assisting with the exception, please wait""");
+            //
+            //                            long timer = vertx.setPeriodic(800, id -> System.out.print("."));
+            //
+            //                            AIClient aiClient = aiBuildItem.getAIClient();
+            //
+            //                            CompletableFuture<ExceptionOutput> response = aiClient
+            //                                    .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
+            //                                            sourceString);
+            //
+            //                            response.thenAccept((exceptionOutput) -> {
+            //                                vertx.cancelTimer(timer);
+            //                                System.out.println("\n\n" + exceptionOutput.response());
+            //                                System.out.println("\n\n" + exceptionOutput.explanation());
+            //                                System.out.println("\n------ Diff ------ ");
+            //                                System.out.println("\n\n" + exceptionOutput.diff());
+            //                                System.out.println("\n------ Suggested source ------ ");
+            //                                System.out.println("\n\n" + exceptionOutput.manipulatedContent());
+            //                            });
+            //                        }
+            //                    });
+            //            aiConsoleProducer.produce(new AIConsoleBuildItem(consoleCommand));
 
         }
+    }
+
+    private String getInitMessage(LastExceptionBuildItem lastExceptionBuildItem) {
+        LastException lastException = lastExceptionBuildItem.getLastException().get();
+        if (lastException == null) {
+            return "none";
+        }
+        return lastException.throwable().getMessage();
     }
 
 }

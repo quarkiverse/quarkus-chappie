@@ -3,27 +3,31 @@ package io.quarkiverse.chappie.deployment.action;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.workspace.GenerationWorkspaceActionBuildItem;
+import io.quarkus.deployment.dev.ai.workspace.Patterns;
+import io.quarkus.deployment.dev.ai.workspace.WorkspaceCreateBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class TestGenerationDevUIProcessor {
 
     @BuildStep
-    void createBuildTimeActions(BuildProducer<GenerationWorkspaceActionBuildItem> generationActionProducer) {
-        generationActionProducer
-                .produce(new GenerationWorkspaceActionBuildItem("Generate Test", Optional.of(SYSTEM_MESSAGE), USER_MESSAGE,
-                        (Path contentPath) -> {
+    void createWorkspaceActions(BuildProducer<WorkspaceCreateBuildItem> workspaceCreateProducer) {
+        workspaceCreateProducer
+                .produce(WorkspaceCreateBuildItem.builder()
+                        .label("Generate Test")
+                        .systemMessage(SYSTEM_MESSAGE)
+                        .userMessage(USER_MESSAGE)
+                        .storePathFunction((Path contentPath) -> {
                             String modifiedPath = contentPath.toString().replace(File.separator + "main" + File.separator,
                                     File.separator + "test" + File.separator);
                             return Paths.get(modifiedPath.substring(0, modifiedPath.length() - 5) + "Test.java");
-
-                        }, Patterns.JAVA_SRC));
+                        })
+                        .filter(Patterns.JAVA_SRC)
+                        .build());
     }
 
     private static final String SYSTEM_MESSAGE = "Your job is to generate test for the provided Quarkus source code. Make sure the solutions is done in the Quarkus recomended way";

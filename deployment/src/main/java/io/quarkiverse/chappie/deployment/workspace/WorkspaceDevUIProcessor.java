@@ -3,10 +3,14 @@ package io.quarkiverse.chappie.deployment.workspace;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -25,9 +29,9 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.dev.ai.AIBuildItem;
 import io.quarkus.deployment.dev.ai.AIClient;
-import io.quarkus.deployment.dev.ai.workspace.GenerationWorkspaceActionBuildItem;
-import io.quarkus.deployment.dev.ai.workspace.InterpretationWorkspaceActionBuildItem;
-import io.quarkus.deployment.dev.ai.workspace.ManipulationWorkspaceActionBuildItem;
+import io.quarkus.deployment.dev.ai.workspace.WorkspaceCreateBuildItem;
+import io.quarkus.deployment.dev.ai.workspace.WorkspaceReadBuildItem;
+import io.quarkus.deployment.dev.ai.workspace.WorkspaceUpdateBuildItem;
 import io.quarkus.deployment.pkg.builditem.BuildSystemTargetBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -57,14 +61,25 @@ class WorkspaceDevUIProcessor {
         List<WorkspaceBuildItem.WorkspaceItem> workspaceItems = new ArrayList<>();
 
         try {
-            Files.walk(projectRoot)
-                    .filter(path -> !path.startsWith(outputDir)) // Exclude everything under target/build
-                    .filter(Files::isRegularFile) // Only regular files (ignore directories)
-                    .forEach(file -> {
+            Files.walkFileTree(projectRoot, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    if (Files.isHidden(dir)) {
+                        return FileVisitResult.SKIP_SUBTREE; // Skip hidden directories and everything inside them
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    if (!Files.isHidden(file) && !file.startsWith(outputDir)) {
                         String name = projectRoot.relativize(file).toString();
-                        System.out.println(name + "|" + file);
                         workspaceItems.add(new WorkspaceBuildItem.WorkspaceItem(name, file));
-                    });
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -74,9 +89,9 @@ class WorkspaceDevUIProcessor {
     @BuildStep
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             WorkspaceBuildItem workspaceBuildItem,
-            List<ManipulationWorkspaceActionBuildItem> manipulationActionBuildItems,
-            List<GenerationWorkspaceActionBuildItem> generationActionBuildItems,
-            List<InterpretationWorkspaceActionBuildItem> interpretationActionBuildItems,
+            List<WorkspaceUpdateBuildItem> workspaceUpdateBuildItems,
+            List<WorkspaceCreateBuildItem> workspaceCreateBuildItems,
+            List<WorkspaceReadBuildItem> workspaceReadBuildItems,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             AIBuildItem aiBuildItem,
             ChappieConfig chappieConfig) {
@@ -112,23 +127,22 @@ class WorkspaceDevUIProcessor {
 
             List<Action> actions = new ArrayList<>();
 
-            // Manipulations
-
-            for (ManipulationWorkspaceActionBuildItem manipulationAction : manipulationActionBuildItems) {
+            // Update (Manipulation content)
+            for (WorkspaceUpdateBuildItem workspaceUpdate : workspaceUpdateBuildItems) {
                 // This adds it the the Action dropdown (if the filter allows) and the methodName will be used in the buildtime actions
                 actions
-                        .add(new Action(manipulationAction.getLabel(), manipulationAction.getMethodName(),
-                                ActionType.Manipulation, manipulationAction.getFilter()));
+                        .add(new Action(workspaceUpdate.getLabel(), workspaceUpdate.getMethodName(),
+                                ActionType.Update, workspaceUpdate.getFilter()));
 
                 // This sets up the method execution for this action
-                buildItemActions.addAction(manipulationAction.getMethodName(), (Map<String, String> params) -> {
+                buildItemActions.addAction(workspaceUpdate.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
                         Path path = Paths.get(URI.create(params.get("path")));
                         String content = ContentIO.readContents(path);
                         if (content != null) {
                             AIClient aiClient = aiBuildItem.getAIClient();
                             CompletableFuture<AIFileResponse> response = aiClient
-                                    .manipulate(manipulationAction.getSystemMessage(), manipulationAction.getUserMessage(),
+                                    .manipulate(workspaceUpdate.getSystemMessage(), workspaceUpdate.getUserMessage(),
                                             path, content)
                                     .thenApply(
                                             contents -> new AIFileResponse(path, contents.manipulatedContent()));
@@ -141,24 +155,24 @@ class WorkspaceDevUIProcessor {
                 });
             }
 
-            // Generations
-            for (GenerationWorkspaceActionBuildItem generationAction : generationActionBuildItems) {
+            // Create (Generate content)
+            for (WorkspaceCreateBuildItem workspaceCreate : workspaceCreateBuildItems) {
                 // This adds it the the Action dropdown (if the filter allows) and the methodName will be used in the buildtime actions
                 actions
-                        .add(new Action(generationAction.getLabel(), generationAction.getMethodName(),
-                                ActionType.Generation, generationAction.getFilter()));
+                        .add(new Action(workspaceCreate.getLabel(), workspaceCreate.getMethodName(),
+                                ActionType.Create, workspaceCreate.getFilter()));
 
                 // This sets up the method execution for this action
-                buildItemActions.addAction(generationAction.getMethodName(), (Map<String, String> params) -> {
+                buildItemActions.addAction(workspaceCreate.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
                         Path path = Paths.get(URI.create(params.get("path")));
                         String contents = ContentIO.readContents(path);
                         if (contents != null) {
                             AIClient aiClient = aiBuildItem.getAIClient();
                             CompletableFuture<AIFileResponse> response = aiClient
-                                    .generate(generationAction.getSystemMessage(), generationAction.getMethodName(), path,
+                                    .generate(workspaceCreate.getSystemMessage(), workspaceCreate.getMethodName(), path,
                                             contents)
-                                    .thenApply(c -> new AIFileResponse(generationAction.resolveStorePath(path),
+                                    .thenApply(c -> new AIFileResponse(workspaceCreate.resolveStorePath(path),
                                             c.generatedContent()));
                             return response;
                         }
@@ -170,19 +184,19 @@ class WorkspaceDevUIProcessor {
                 });
             }
 
-            // Interpretations
-            for (InterpretationWorkspaceActionBuildItem interpretationAction : interpretationActionBuildItems) {
+            // Read (Interpret content)
+            for (WorkspaceReadBuildItem workspaceRead : workspaceReadBuildItems) {
                 actions
-                        .add(new Action(interpretationAction.getLabel(), interpretationAction.getMethodName(),
-                                ActionType.Interpretation, interpretationAction.getFilter()));
-                buildItemActions.addAction(interpretationAction.getMethodName(), (Map<String, String> params) -> {
+                        .add(new Action(workspaceRead.getLabel(), workspaceRead.getMethodName(),
+                                ActionType.Read, workspaceRead.getFilter()));
+                buildItemActions.addAction(workspaceRead.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
                         Path path = Paths.get(URI.create(params.get("path")));
                         String contents = ContentIO.readContents(path);
                         if (contents != null) {
                             AIClient aiClient = aiBuildItem.getAIClient();
                             CompletableFuture<AIResponse> response = aiClient
-                                    .interpret(interpretationAction.getSystemMessage(), interpretationAction.getUserMessage(),
+                                    .interpret(workspaceRead.getSystemMessage(), workspaceRead.getUserMessage(),
                                             path, contents)
                                     .thenApply(c -> new AIResponse(c.interpretedContent()));
                             return response;
@@ -194,6 +208,7 @@ class WorkspaceDevUIProcessor {
                 });
             }
 
+            Collections.sort(actions, Comparator.comparing(Action::label));
             buildItemActions.addAction("getActions", (Map<String, String> param) -> {
                 return actions;
             });
@@ -209,13 +224,21 @@ class WorkspaceDevUIProcessor {
     }
 
     private static int folderPriority(String name) {
-        if (name.startsWith("src/main/"))
+        if (name.startsWith("src/main/java"))
             return 1;
-        if (name.startsWith("src/test/"))
+        if (name.startsWith("src/main/resources"))
             return 2;
-        if (name.startsWith("src/integrationTest/"))
+        if (name.startsWith("src/main/"))
             return 3;
-        return 4;
+        if (name.startsWith("src/test/java"))
+            return 4;
+        if (name.startsWith("src/test/resources"))
+            return 5;
+        if (name.startsWith("src/test/"))
+            return 6;
+        if (name.startsWith("src/integrationTest/"))
+            return 7;
+        return 8;
     }
 
     private boolean isFileInRoot(String name) {
