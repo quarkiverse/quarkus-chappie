@@ -22,12 +22,20 @@ class TestGenerationDevUIProcessor {
                         .systemMessage(SYSTEM_MESSAGE)
                         .userMessage(USER_MESSAGE)
                         .storePathFunction((Path contentPath) -> {
+                            if (isTestPath(contentPath))
+                                return contentPath; // Already correct
                             String modifiedPath = contentPath.toString().replace(File.separator + "main" + File.separator,
                                     File.separator + "test" + File.separator);
                             return Paths.get(modifiedPath.substring(0, modifiedPath.length() - 5) + "Test.java");
                         })
                         .filter(Patterns.JAVA_SRC)
                         .build());
+    }
+
+    private boolean isTestPath(Path path) {
+        Path normalizedPath = path.toAbsolutePath().normalize();
+        return normalizedPath.toString().contains("/src/test/") ||
+                normalizedPath.toString().contains("\\src\\test\\"); // Windows path handling
     }
 
     private static final String SYSTEM_MESSAGE = "Your job is to generate test for the provided Quarkus source code. Make sure the solutions is done in the Quarkus recomended way";

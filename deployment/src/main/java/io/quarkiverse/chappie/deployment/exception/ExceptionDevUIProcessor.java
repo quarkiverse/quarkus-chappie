@@ -8,7 +8,6 @@ import java.util.function.BiConsumer;
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkiverse.chappie.deployment.workspace.WorkspaceBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -20,6 +19,7 @@ import io.quarkus.deployment.dev.ai.AIBuildItem;
 import io.quarkus.deployment.dev.ai.AIClient;
 import io.quarkus.deployment.dev.ai.AIConsoleBuildItem;
 import io.quarkus.deployment.dev.ai.ExceptionOutput;
+import io.quarkus.deployment.dev.ai.workspace.UserWorkspaceBuildItem;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -43,7 +43,7 @@ class ExceptionDevUIProcessor {
     void setupBroadcaster(BuildProducer<ExceptionNotificationBuildItem> exceptionNotificationProducer,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
-            WorkspaceBuildItem workspaceBuildItem) {
+            UserWorkspaceBuildItem workspaceBuildItem) {
 
         exceptionNotificationProducer
                 .produce(new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
@@ -84,7 +84,7 @@ class ExceptionDevUIProcessor {
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             BuildProducer<AIConsoleBuildItem> aiConsoleProducer,
-            WorkspaceBuildItem workspaceBuildItem,
+            UserWorkspaceBuildItem workspaceBuildItem,
             AIBuildItem aiBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
@@ -117,11 +117,9 @@ class ExceptionDevUIProcessor {
 
                     AIClient aiClient = aiBuildItem.getAIClient();
                     if (sourcePath != null) {
-                        String sourceString = ContentIO.readContents(sourcePath);
                         String stacktraceString = lastException.getStackTraceString();
                         CompletableFuture<ExceptionOutput> response = aiClient
-                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
-                                        sourceString);
+                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath);
                         response.thenAccept((suggestedFix) -> {
                             lastSolutionBuildItem.getLastSolution().set(suggestedFix);
                             lastSolutionBuildItem.getPath().set(sourcePath);
@@ -162,11 +160,10 @@ class ExceptionDevUIProcessor {
                         Path sourcePath = DecorateStackUtil.findAffectedPath(
                                 lastException.stackTraceElement().getClassName(),
                                 workspaceBuildItem.getPaths());
-                        String sourceString = ContentIO.readContents(sourcePath);
                         String stacktraceString = lastException.getStackTraceString();
 
                         return aiClient
-                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath, sourceString)
+                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath)
                                 .thenApply(exceptionOutput -> {
                                     return "\n\n" + exceptionOutput.response() +
                                             "\n\n" + exceptionOutput.explanation() +
@@ -177,62 +174,6 @@ class ExceptionDevUIProcessor {
                                 });
                     })
                     .build());
-
-            //            Vertx vertx = Vertx.vertx();
-            //            ConsoleCommand consoleCommand = new ConsoleCommand('a', "Help with the latest exception",
-            //                    new ConsoleCommand.HelpState(new Supplier<String>() {
-            //                        @Override
-            //                        public String get() {
-            //                            return MessageFormat.RED;
-            //                        }
-            //                    }, new Supplier<String>() {
-            //                        @Override
-            //                        public String get() {
-            //                            LastException lastException = lastExceptionBuildItem.getLastException().get();
-            //                            if (lastException == null) {
-            //                                return "none";
-            //                            }
-            //                            return lastException.throwable().getMessage();
-            //                        }
-            //                    }), new Runnable() {
-            //                        @Override
-            //                        public void run() {
-            //                            LastException lastException = lastExceptionBuildItem.getLastException().get();
-            //                            if (lastException == null) {
-            //                                return;
-            //                            }
-            //
-            //                            Path sourcePath = DecorateStackUtil.findAffectedPath(
-            //                                    lastException.stackTraceElement().getClassName(),
-            //                                    workspaceBuildItem.getPaths());
-            //                            String sourceString = ContentIO.readContents(sourcePath);
-            //                            String stacktraceString = lastException.getStackTraceString();
-            //
-            //                            System.out.println("""
-            //                                    =========================================
-            //                                    Assisting with the exception, please wait""");
-            //
-            //                            long timer = vertx.setPeriodic(800, id -> System.out.print("."));
-            //
-            //                            AIClient aiClient = aiBuildItem.getAIClient();
-            //
-            //                            CompletableFuture<ExceptionOutput> response = aiClient
-            //                                    .exception("The stacktrace is a Java exception", stacktraceString, sourcePath,
-            //                                            sourceString);
-            //
-            //                            response.thenAccept((exceptionOutput) -> {
-            //                                vertx.cancelTimer(timer);
-            //                                System.out.println("\n\n" + exceptionOutput.response());
-            //                                System.out.println("\n\n" + exceptionOutput.explanation());
-            //                                System.out.println("\n------ Diff ------ ");
-            //                                System.out.println("\n\n" + exceptionOutput.diff());
-            //                                System.out.println("\n------ Suggested source ------ ");
-            //                                System.out.println("\n\n" + exceptionOutput.manipulatedContent());
-            //                            });
-            //                        }
-            //                    });
-            //            aiConsoleProducer.produce(new AIConsoleBuildItem(consoleCommand));
-
         }
     }
 

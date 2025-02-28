@@ -1,7 +1,8 @@
 package io.quarkiverse.chappie.deployment;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,30 +24,38 @@ public class JsonObjectCreator {
         commonInputNode.put("productVersion", Version.getVersion());
     }
 
-    public static String getInput(Optional<String> extraContent, Map<String, String> params) {
-        try {
-            ObjectNode inputNode = objectMapper.createObjectNode();
-            inputNode.set("commonInput", commonInputNode);
-            if (extraContent.isPresent()) {
-                inputNode.put("extraContent", extraContent.get());
-            }
+    //    public static String getInput(Optional<String> extraContent, Map<String, String> params) {
+    //        try {
+    //            ObjectNode inputNode = objectMapper.createObjectNode();
+    //            inputNode.set("commonInput", commonInputNode);
+    //            if (extraContent.isPresent()) {
+    //                inputNode.put("extraContent", extraContent.get());
+    //            }
+    //
+    //            for (Map.Entry<String, String> kv : params.entrySet()) {
+    //                inputNode.put(kv.getKey(), kv.getValue());
+    //            }
+    //            return objectMapper.writeValueAsString(inputNode);
+    //        } catch (JsonProcessingException ex) {
+    //            throw new RuntimeException(ex);
+    //        }
+    //    }
 
-            for (Map.Entry<String, String> kv : params.entrySet()) {
-                inputNode.put(kv.getKey(), kv.getValue());
-            }
-            return objectMapper.writeValueAsString(inputNode);
-        } catch (JsonProcessingException ex) {
-            throw new RuntimeException(ex);
-        }
+    public static String getWorkspaceInput(String systemmessageTemplate, String usermessageTemplate,
+            Map<String, String> variables, List<Path> paths) {
+        return getInput(systemmessageTemplate, usermessageTemplate, variables, Map.of("paths", paths));
     }
 
-    public static String getInput(String systemMessage, String userMessage, Map<String, Object> params) {
+    public static String getInput(String systemmessageTemplate, String usermessageTemplate, Map<String, String> variables,
+            Map<String, Object> params) {
         try {
 
             ObjectNode genericInputNode = commonInputNode.deepCopy();
 
-            genericInputNode.put("systemmessage", systemMessage);
-            genericInputNode.put("usermessage", userMessage);
+            genericInputNode.put("systemmessageTemplate", systemmessageTemplate);
+            genericInputNode.put("usermessageTemplate", usermessageTemplate);
+            ObjectNode variablesAsNode = objectMapper.valueToTree(variables);
+            genericInputNode.set("variables", variablesAsNode);
 
             ObjectNode inputNode = objectMapper.createObjectNode();
             inputNode.set("genericInput", genericInputNode);

@@ -1,6 +1,7 @@
 import { LitElement, html, css} from 'lit';
 import { pages } from 'build-time-data';
 import { JsonRpc } from 'jsonrpc';
+import { devuiState } from 'devui-state';
 import 'qwc/qwc-extension-link.js';
 import '@vaadin/progress-bar';
 import '@vaadin/horizontal-layout';
@@ -106,10 +107,20 @@ export class QwcChappieCustomCard extends LitElement {
                 path="${page.id}"
                 ?embed=${page.embed}
                 externalUrl="${page.metadata.externalUrl}"
-                webcomponent="${page.componentLink}" >
+                dynamicUrlMethodName="${page.metadata.dynamicUrlMethodName}"
+                webcomponent="${page.componentLink}" 
+                draggable="true" @dragstart="${this._handleDragStart}">
             </qwc-extension-link>
         `)}`;
     }
 
+    _handleDragStart(event) {
+        const extensionNamespace = event.currentTarget.getAttribute('namespace');
+        const pageId = event.currentTarget.getAttribute('path');
+        const extension = devuiState.cards.active.find(obj => obj.namespace === extensionNamespace);
+        const page = extension.cardPages.find(obj => obj.id === pageId);
+        const jsonData = JSON.stringify(page);
+        event.dataTransfer.setData('application/json', jsonData);
+    }
 }
 customElements.define('qwc-chappie-custom-card', QwcChappieCustomCard);

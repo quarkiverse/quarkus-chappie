@@ -9,6 +9,7 @@ import '@vaadin/menu-bar';
 import '@vaadin/tooltip';
 import '@qomponent/qui-code-block';
 import '@qomponent/qui-directory-tree';
+import '@qomponent/qui-badge';
 import MarkdownIt from 'markdown-it';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { observeState } from 'lit-element-state';
@@ -69,7 +70,6 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         }
         .nothing {
             display: flex;
-            
         }
     `;
     
@@ -230,7 +230,14 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                                     showLineNumbers>
                                 </qui-code-block>
                             </div>
+                            ${this._renderWarningWhenDirty()}
                         </div>`;
+        }
+    }
+    
+    _renderWarningWhenDirty(){
+        if(this._selectedWorkspaceItem.isDirty){
+            return this._renderWarning();
         }
     }
     
@@ -348,12 +355,16 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                             .content='${this._generatedResource.contents}'
                             showLineNumbers>
                         </qui-code-block>
-                    </div>`;
+                    </div>
+                    ${this._renderWarning()}`;
     }
     
     _renderMarkdownDialogContent(){
         const htmlContent = this.md.render(this._markdownContent.contents);
-        return html`<div class="markdown">${unsafeHTML(htmlContent)}</div>`;
+        return html`<div class="markdown">
+                        ${unsafeHTML(htmlContent)}
+                    </div>
+                    ${this._renderWarning()}`;
     }
     
     _renderActions(){
@@ -369,12 +380,21 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         
         this.jsonRpc[e.detail.value.methodName]({name:this._selectedWorkspaceItem.name, path:this._selectedWorkspaceItem.path}).then(jsonRpcResponse => {
             if(this._showTalkToAiProgressBar) { // Else the user has canceled
-                if(e.detail.value.actionType === "Update"){
-                    this._selectedWorkspaceItem = { ...this._selectedWorkspaceItem, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
-                }else if(e.detail.value.actionType === "Create"){
-                    this._generatedResource = { ...this._generatedResource, path: jsonRpcResponse.result.path, contents: jsonRpcResponse.result.contents, isDirty: true };
-                }else if(e.detail.value.actionType === "Read"){
-                    this._markdownContent = { ...this._markdownContent, contents: jsonRpcResponse.result.contents};
+                
+                const firstEntry = Object.entries(jsonRpcResponse.result)[0];
+                if(firstEntry){
+                    const [path, contents] = firstEntry;
+                    if(e.detail.value.actionType === "Update"){
+                        this._selectedWorkspaceItem = { ...this._selectedWorkspaceItem, path: path, contents: contents, isDirty: true };
+                    }else if(firstEntry && e.detail.value.actionType === "Create"){
+                        this._generatedResource = { ...this._generatedResource, path: path, contents: contents, isDirty: true };
+                    }else if(firstEntry && e.detail.value.actionType === "Read"){
+                        console.log(path);
+                        console.log(contents);
+                        this._markdownContent = { ...this._markdownContent, contents: contents};
+                    }
+                }else {
+                    console.warn(JSON.stringify(jsonRpcResponse.result));
                 }
                 this._termTalkToAI(); 
             }
@@ -501,6 +521,12 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         });
 
         return root;
+    }
+
+    _renderWarning(){
+        return html`<qui-badge text="Warning" level="warning" icon="warning" style="display: flex;flex-direction: column;">
+            <span>AI can make mistakes. Check responses.</span>
+        </qui-badge>`;
     }
 
 }

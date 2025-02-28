@@ -13,7 +13,7 @@ public class ChappieSimulateResource {
     @GET
     @Path("/nullpointer")
     public int nullpointer() {
-        String str = ""; // Initialize str to an empty string
+        String str = null;
         return str.length();
     }
 
@@ -21,7 +21,7 @@ public class ChappieSimulateResource {
     @Path("/arrayindexoutofbounce")
     public int arrayindexoutofbounce() {
         int[] arr = new int[5];
-        return arr[4]; // Accessing the last valid index
+        return arr[10];
     }
 
     @GET
