@@ -5,8 +5,34 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
-public class SourceCodeFinder {
+public class ContentIO {
+
+    public static String writeContent(Path path, String contents) {
+        try {
+            Files.createDirectories(path.getParent());
+            if (!Files.exists(path))
+                Files.createFile(path);
+            Files.writeString(path, contents, StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.CREATE);
+            return path.toString();
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    public static String readContents(Path filePath) {
+        if (filePath != null && Files.exists(filePath)) {
+            try {
+                return Files.readString(filePath);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+        }
+
+        return null;
+    }
 
     public static String getSourceCode(Path srcMainJava, StackTraceElement stackTraceElement) {
 
@@ -35,18 +61,6 @@ public class SourceCodeFinder {
 
             return srcMainJava.resolve(file);
         }
-        return null;
-    }
-
-    public static String getSourceCode(Path filePath) {
-        if (filePath != null && Files.exists(filePath)) {
-            try {
-                return Files.readString(filePath);
-            } catch (IOException ex) {
-                throw new UncheckedIOException(ex);
-            }
-        }
-
         return null;
     }
 
