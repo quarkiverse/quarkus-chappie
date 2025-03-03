@@ -4,7 +4,7 @@ import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceReadBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceReadBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class ExplanationDevUIProcessor {

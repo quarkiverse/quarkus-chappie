@@ -8,8 +8,8 @@ import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.workspace.Patterns;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceCreateBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.Patterns;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceCreateBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class TestGenerationDevUIProcessor {

@@ -380,7 +380,7 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
         
         this.jsonRpc[e.detail.value.methodName]({name:this._selectedWorkspaceItem.name, path:this._selectedWorkspaceItem.path}).then(jsonRpcResponse => {
             if(this._showTalkToAiProgressBar) { // Else the user has canceled
-                
+                console.log(JSON.stringify(jsonRpcResponse.result));
                 const firstEntry = Object.entries(jsonRpcResponse.result)[0];
                 if(firstEntry){
                     const [path, contents] = firstEntry;
@@ -389,8 +389,6 @@ export class QwcChappieWorkspace extends observeState(QwcHotReloadElement) {
                     }else if(firstEntry && e.detail.value.actionType === "Create"){
                         this._generatedResource = { ...this._generatedResource, path: path, contents: contents, isDirty: true };
                     }else if(firstEntry && e.detail.value.actionType === "Read"){
-                        console.log(path);
-                        console.log(contents);
                         this._markdownContent = { ...this._markdownContent, contents: contents};
                     }
                 }else {

@@ -4,8 +4,8 @@ import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.workspace.Patterns;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceUpdateBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.Patterns;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceUpdateBuildItem;
 
 @BuildSteps(onlyIf = IsDevelopment.class)
 class JavaDocDevUIProcessor {
