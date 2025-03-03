@@ -21,10 +21,10 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
-import io.quarkus.deployment.dev.ai.AIBuildItem;
-import io.quarkus.deployment.dev.ai.AIClient;
-import io.quarkus.deployment.dev.ai.AIConsoleBuildItem;
-import io.quarkus.deployment.dev.ai.DynamicOutput;
+import io.quarkus.deployment.dev.assistant.AIBuildItem;
+import io.quarkus.deployment.dev.assistant.AIClient;
+import io.quarkus.deployment.dev.assistant.AIConsoleBuildItem;
+import io.quarkus.deployment.dev.assistant.DynamicOutput;
 import io.vertx.core.Vertx;
 
 /**
@@ -111,7 +111,7 @@ class AIConsoleProcessor {
     private void printResponse(CompletionStage response, Vertx vertx, long timer) {
         response.thenAccept((output) -> {
             vertx.cancelTimer(timer);
-            System.out.println("\n\n" + output);
+            System.out.println("\n\n" + output.toString());
         }).exceptionally(ex -> {
             vertx.cancelTimer(timer);
             System.err.println("Failed to get response from AI [ " + ((Throwable) ex).getMessage() + "]");

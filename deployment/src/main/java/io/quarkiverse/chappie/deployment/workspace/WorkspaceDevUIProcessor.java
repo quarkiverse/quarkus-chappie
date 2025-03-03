@@ -20,12 +20,12 @@ import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.deployment.dev.ai.AIBuildItem;
-import io.quarkus.deployment.dev.ai.AIClient;
-import io.quarkus.deployment.dev.ai.workspace.UserWorkspaceBuildItem;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceCreateBuildItem;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceReadBuildItem;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceUpdateBuildItem;
+import io.quarkus.deployment.dev.assistant.AIBuildItem;
+import io.quarkus.deployment.dev.assistant.AIClient;
+import io.quarkus.deployment.dev.assistant.workspace.UserWorkspaceBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceCreateBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceReadBuildItem;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceUpdateBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
 
@@ -103,10 +103,11 @@ class WorkspaceDevUIProcessor {
                                 .thenApply(
                                         contents -> contents.pathAndContent());
                         return pathAndContent;
+                    } else {
+                        CompletableFuture<Map<String, String>> failedFuture = new CompletableFuture<>();
+                        failedFuture.completeExceptionally(new NullPointerException("path parameter not provided"));
+                        return failedFuture;
                     }
-                    CompletableFuture<Map<String, String>> failedFuture = new CompletableFuture<>();
-                    failedFuture.completeExceptionally(new NullPointerException("Content is empty"));
-                    return failedFuture;
                 });
             }
 

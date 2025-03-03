@@ -12,10 +12,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import io.quarkiverse.chappie.deployment.JsonObjectCreator;
-import io.quarkus.deployment.dev.ai.AIClient;
-import io.quarkus.deployment.dev.ai.DynamicOutput;
-import io.quarkus.deployment.dev.ai.ExceptionOutput;
-import io.quarkus.deployment.dev.ai.workspace.WorkspaceOutput;
+import io.quarkus.deployment.dev.assistant.AIClient;
+import io.quarkus.deployment.dev.assistant.DynamicOutput;
+import io.quarkus.deployment.dev.assistant.ExceptionOutput;
+import io.quarkus.deployment.dev.assistant.workspace.WorkspaceOutput;
 
 public class ChappieRESTClient implements AIClient {
 
@@ -30,7 +30,8 @@ public class ChappieRESTClient implements AIClient {
             String userMessageTemplate,
             Map<String, String> variables, List<Path> paths) {
         try {
-            String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
+            String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""),
+                    userMessageTemplate,
                     variables, paths);
             return send("workspaceUpdate", jsonPayload, WorkspaceOutput.class);
         } catch (Exception ex) {
@@ -71,14 +72,16 @@ public class ChappieRESTClient implements AIClient {
     }
 
     @Override
-    public CompletableFuture<DynamicOutput> workspaceDynamic(Optional<String> systemMessageTemplate, String userMessageTemplate,
+    public <T> CompletableFuture<T> workspaceDynamic(Optional<String> systemMessageTemplate,
+            String userMessageTemplate,
             Map<String, String> variables, List<Path> paths) {
         try {
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     variables, paths);
-            return send("workspaceDynamic", jsonPayload, DynamicOutput.class);
+            return (CompletableFuture<T>) send("workspaceDynamic", jsonPayload, DynamicOutput.class)
+                    .thenApply(DynamicOutput::json);
         } catch (Exception ex) {
-            CompletableFuture<DynamicOutput> failedFuture = new CompletableFuture<>();
+            CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             return failedFuture;
         }
