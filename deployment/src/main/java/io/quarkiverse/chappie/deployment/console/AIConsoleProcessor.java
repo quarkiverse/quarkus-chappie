@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -111,7 +112,13 @@ class AIConsoleProcessor {
     private void printResponse(CompletionStage response, Vertx vertx, long timer) {
         response.thenAccept((output) -> {
             vertx.cancelTimer(timer);
-            System.out.println("\n\n" + output.toString());
+            if (Map.class.isAssignableFrom(output.getClass())) {
+                for (Object value : ((Map) output).values()) {
+                    System.out.println("\n\n" + value.toString());
+                }
+            } else {
+                System.out.println("\n\n" + output.toString());
+            }
         }).exceptionally(ex -> {
             vertx.cancelTimer(timer);
             System.err.println("Failed to get response from AI [ " + ((Throwable) ex).getMessage() + "]");

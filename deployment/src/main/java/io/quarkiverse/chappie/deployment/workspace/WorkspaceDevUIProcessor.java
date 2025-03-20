@@ -66,7 +66,7 @@ class WorkspaceDevUIProcessor {
 
             buildItemActions.addAction("getWorkspaceItemContent", (Map<String, String> params) -> {
                 if (params.containsKey("path")) {
-                    Path path = Paths.get(URI.create(params.get("path")));
+                    Path path = toPath(params.get("path"));
                     return ContentIO.readContents(path);
                 }
                 return null;
@@ -77,7 +77,7 @@ class WorkspaceDevUIProcessor {
                     String content = params.get("content");
                     Path path = Paths.get(params.get("path"));
                     ContentIO.writeContent(path, content);
-                    return new SavedResult(path, true, null);
+                    return new SavedResult(path.toString(), true, null);
                 }
                 return new SavedResult(null, false, "Invalid input");
             });
@@ -94,7 +94,7 @@ class WorkspaceDevUIProcessor {
                 // This sets up the method execution for this action
                 buildItemActions.addAction(workspaceUpdate.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
-                        Path path = Paths.get(URI.create(params.get("path")));
+                        Path path = toPath(params.get("path"));
                         // TODO: Get the varibles
                         AIClient aiClient = aiBuildItem.getAIClient();
                         CompletableFuture<Map<String, String>> pathAndContent = aiClient
@@ -121,7 +121,7 @@ class WorkspaceDevUIProcessor {
                 // This sets up the method execution for this action
                 buildItemActions.addAction(workspaceCreate.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
-                        Path path = Paths.get(URI.create(params.get("path")));
+                        Path path = toPath(params.get("path"));
                         // TODO: Get the varibles
                         AIClient aiClient = aiBuildItem.getAIClient();
                         CompletableFuture<Map<String, String>> pathAndContent = aiClient
@@ -149,7 +149,7 @@ class WorkspaceDevUIProcessor {
                                 ActionType.Read, workspaceRead.getFilter()));
                 buildItemActions.addAction(workspaceRead.getMethodName(), (Map<String, String> params) -> {
                     if (params.containsKey("path")) {
-                        Path path = Paths.get(URI.create(params.get("path")));
+                        Path path = toPath(params.get("path"));
                         // TODO: Get the varibles
                         AIClient aiClient = aiBuildItem.getAIClient();
                         CompletableFuture<Map<String, String>> pathAndContent = aiClient
@@ -174,7 +174,15 @@ class WorkspaceDevUIProcessor {
         }
     }
 
-    static record SavedResult(Path path, boolean success, String errorMessage) {
+    static record SavedResult(String path, boolean success, String errorMessage) {
+    }
+
+    private Path toPath(String path) {
+        try {
+            return Paths.get(URI.create(path));
+        } catch (IllegalArgumentException iae) {
+            return Paths.get(path);
+        }
     }
 
 }
