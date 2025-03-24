@@ -58,4 +58,12 @@ public class JsonObjectCreator {
             throw new RuntimeException("Failed to parse JSON response \n" + json, e);
         }
     }
+
+    public static String toJsonString(Map<String, Object> data) {
+        try {
+            return objectMapper.writeValueAsString(data);
+        } catch (JsonProcessingException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 }

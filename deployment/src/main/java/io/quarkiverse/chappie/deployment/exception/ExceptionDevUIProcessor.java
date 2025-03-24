@@ -3,11 +3,13 @@ package io.quarkiverse.chappie.deployment.exception;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
+import io.quarkiverse.chappie.deployment.UserWorkspaceBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -15,11 +17,9 @@ import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
-import io.quarkus.deployment.dev.assistant.AIBuildItem;
-import io.quarkus.deployment.dev.assistant.AIClient;
-import io.quarkus.deployment.dev.assistant.AIConsoleBuildItem;
-import io.quarkus.deployment.dev.assistant.ExceptionOutput;
-import io.quarkus.deployment.dev.assistant.workspace.UserWorkspaceBuildItem;
+import io.quarkus.deployment.dev.assistant.Assistant;
+import io.quarkus.deployment.dev.assistant.AssistantBuildItem;
+import io.quarkus.deployment.dev.assistant.AssistantConsoleBuildItem;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -83,9 +83,9 @@ class ExceptionDevUIProcessor {
     @BuildStep
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
-            BuildProducer<AIConsoleBuildItem> aiConsoleProducer,
+            BuildProducer<AssistantConsoleBuildItem> assistantConsoleProducer,
             UserWorkspaceBuildItem workspaceBuildItem,
-            AIBuildItem aiBuildItem,
+            AssistantBuildItem assistantBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
             LastSolutionBuildItem lastSolutionBuildItem) {
@@ -115,10 +115,10 @@ class ExceptionDevUIProcessor {
                     Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
                             workspaceBuildItem.getPaths());
 
-                    AIClient aiClient = aiBuildItem.getAIClient();
+                    Assistant assistant = assistantBuildItem.getAssistant();
                     if (sourcePath != null) {
                         String stacktraceString = lastException.getStackTraceString();
-                        CompletableFuture<ExceptionOutput> response = aiClient
+                        CompletionStage<ExceptionOutput> response = assistant
                                 .exception("The stacktrace is a Java exception", stacktraceString, sourcePath);
                         response.thenAccept((suggestedFix) -> {
                             lastSolutionBuildItem.getLastSolution().set(suggestedFix);
@@ -146,12 +146,12 @@ class ExceptionDevUIProcessor {
 
             // Also allow user to do this in the console
 
-            aiConsoleProducer.produce(AIConsoleBuildItem.builder()
+            assistantConsoleProducer.produce(AssistantConsoleBuildItem.builder()
                     .description("Help with the latest exception")
                     .key('a')
                     .colorSupplier(() -> MessageFormat.RED)
                     .stateSupplier(() -> getInitMessage(lastExceptionBuildItem))
-                    .function((AIClient aiClient) -> {
+                    .function((Assistant assistant) -> {
                         LastException lastException = lastExceptionBuildItem.getLastException().get();
                         if (lastException == null) {
                             return CompletableFuture.completedFuture("");
@@ -162,9 +162,11 @@ class ExceptionDevUIProcessor {
                                 workspaceBuildItem.getPaths());
                         String stacktraceString = lastException.getStackTraceString();
 
-                        return aiClient
+                        return assistant
                                 .exception("The stacktrace is a Java exception", stacktraceString, sourcePath)
-                                .thenApply(exceptionOutput -> {
+                                .thenApply((Object output) -> {
+                                    ExceptionOutput exceptionOutput = (ExceptionOutput) output;
+
                                     return "\n\n" + exceptionOutput.response() +
                                             "\n\n" + exceptionOutput.explanation() +
                                             "\n------ Diff ------ " +
