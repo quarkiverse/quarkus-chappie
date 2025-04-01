@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
@@ -22,10 +21,9 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
-import io.quarkus.deployment.dev.assistant.AIBuildItem;
-import io.quarkus.deployment.dev.assistant.AIClient;
-import io.quarkus.deployment.dev.assistant.AIConsoleBuildItem;
-import io.quarkus.deployment.dev.assistant.DynamicOutput;
+import io.quarkus.deployment.dev.assistant.Assistant;
+import io.quarkus.deployment.dev.assistant.AssistantBuildItem;
+import io.quarkus.deployment.dev.assistant.AssistantConsoleBuildItem;
 import io.vertx.core.Vertx;
 
 /**
@@ -34,7 +32,7 @@ import io.vertx.core.Vertx;
  * @author Phillip Kruger (phillip.kruger@gmail.com)
  */
 @BuildSteps(onlyIf = IsDevelopment.class)
-class AIConsoleProcessor {
+class ChappieConsoleProcessor {
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
 
     @BuildStep
@@ -50,31 +48,31 @@ class AIConsoleProcessor {
     @Consume(ConsoleInstalledBuildItem.class)
     @BuildStep
     void setupConsole(BuildProducer<FeatureBuildItem> featureProducer,
-            AIBuildItem aiBuildItem,
-            List<AIConsoleBuildItem> aiConsoleBuildItems) {
+            AssistantBuildItem assistantBuildItem,
+            List<AssistantConsoleBuildItem> assistantConsoleBuildItems) {
 
-        if (!aiConsoleBuildItems.isEmpty()) {
+        if (!assistantConsoleBuildItems.isEmpty()) {
             if (chappieConsoleContext == null) {
                 chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Assistant");
             }
 
-            Collections.sort(aiConsoleBuildItems, Comparator.comparing(AIConsoleBuildItem::getDescription));
+            Collections.sort(assistantConsoleBuildItems, Comparator.comparing(AssistantConsoleBuildItem::getDescription));
 
             Vertx vertx = Vertx.vertx();
             List<ConsoleCommand> consoleCommands = new ArrayList<>();
-            for (AIConsoleBuildItem aiConsoleBuildItem : aiConsoleBuildItems) {
-                if (aiConsoleBuildItem.getConsoleCommand() != null) {
-                    consoleCommands.add(aiConsoleBuildItem.getConsoleCommand());
+            for (AssistantConsoleBuildItem assistantConsoleBuildItem : assistantConsoleBuildItems) {
+                if (assistantConsoleBuildItem.getConsoleCommand() != null) {
+                    consoleCommands.add(assistantConsoleBuildItem.getConsoleCommand());
                 } else {
                     ConsoleCommand.HelpState helpState = null;
-                    if (aiConsoleBuildItem.getStateSupplier() != null) {
+                    if (assistantConsoleBuildItem.getStateSupplier() != null) {
                         helpState = new ConsoleCommand.HelpState(
-                                aiConsoleBuildItem.getColorSupplier(),
-                                aiConsoleBuildItem.getStateSupplier());
+                                assistantConsoleBuildItem.getColorSupplier(),
+                                assistantConsoleBuildItem.getStateSupplier());
                     }
 
-                    ConsoleCommand consoleCommand = new ConsoleCommand(aiConsoleBuildItem.getKey(),
-                            aiConsoleBuildItem.getDescription(), helpState,
+                    ConsoleCommand consoleCommand = new ConsoleCommand(assistantConsoleBuildItem.getKey(),
+                            assistantConsoleBuildItem.getDescription(), helpState,
                             new Runnable() {
                                 @Override
                                 public void run() {
@@ -84,16 +82,17 @@ class AIConsoleProcessor {
 
                                     long timer = vertx.setPeriodic(800, id -> System.out.print("."));
 
-                                    AIClient aiClient = aiBuildItem.getAIClient();
+                                    Assistant assistant = assistantBuildItem.getAssistant();
 
-                                    if (aiConsoleBuildItem.getFunction().isPresent()) {
-                                        CompletionStage<?> response = aiConsoleBuildItem.getFunction().get().apply(aiClient);
+                                    if (assistantConsoleBuildItem.getFunction().isPresent()) {
+                                        CompletionStage<?> response = assistantConsoleBuildItem.getFunction().get()
+                                                .apply(assistant);
                                         printResponse(response, vertx, timer);
                                     } else {
-                                        CompletableFuture<DynamicOutput> response = aiClient
-                                                .dynamic(aiConsoleBuildItem.getSystemMessage(),
-                                                        aiConsoleBuildItem.getUserMessage(),
-                                                        aiConsoleBuildItem.getVariables());
+                                        CompletionStage response = assistant
+                                                .assist(assistantConsoleBuildItem.getSystemMessage(),
+                                                        assistantConsoleBuildItem.getUserMessage(),
+                                                        assistantConsoleBuildItem.getVariables());
                                         printResponse(response, vertx, timer);
                                     }
                                 }
