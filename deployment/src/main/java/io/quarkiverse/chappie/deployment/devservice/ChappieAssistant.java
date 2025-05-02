@@ -10,10 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import io.quarkiverse.chappie.deployment.JsonObjectCreator;
 import io.quarkiverse.chappie.deployment.exception.ExceptionOutput;
-import io.quarkus.deployment.dev.assistant.Assistant;
+import io.quarkus.assistant.deployment.Assistant;
 
 public class ChappieAssistant implements Assistant {
 
@@ -24,13 +25,13 @@ public class ChappieAssistant implements Assistant {
     }
 
     @Override
-    public <T> CompletableFuture<T> assist(Optional<String> systemMessageTemplate,
+    public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
             String userMessageTemplate,
             Map<String, String> variables, List<Path> paths) {
         try {
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     variables, paths);
-            return (CompletableFuture<T>) send("assist", jsonPayload, Map.class);
+            return (CompletionStage<T>) send("assist", jsonPayload, Map.class);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -39,12 +40,12 @@ public class ChappieAssistant implements Assistant {
     }
 
     @Override
-    public <T> CompletableFuture<T> exception(Optional<String> systemMessage, String userMessage,
+    public <T> CompletionStage<T> exception(Optional<String> systemMessage, String userMessage,
             String stacktrace, Path path) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage, Map.of(),
                     Map.of("stacktrace", stacktrace, "path", path.toString()));
-            return (CompletableFuture<T>) send("exception", jsonPayload, ExceptionOutput.class);
+            return (CompletionStage<T>) send("exception", jsonPayload, ExceptionOutput.class);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -52,11 +53,11 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
-    private <T> CompletableFuture<T> send(String method, String jsonPayload, Class<T> responseType) {
+    private <T> CompletionStage<T> send(String method, String jsonPayload, Class<T> responseType) {
         return send(createHttpRequest(method, jsonPayload), responseType);
     }
 
-    private <T> CompletableFuture<T> send(HttpRequest request, Class<T> responseType) {
+    private <T> CompletionStage<T> send(HttpRequest request, Class<T> responseType) {
         HttpClient client = HttpClient.newHttpClient();
         return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
