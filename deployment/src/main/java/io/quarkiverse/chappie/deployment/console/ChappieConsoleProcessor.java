@@ -12,6 +12,9 @@ import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappieConfig;
 import io.quarkiverse.chappie.deployment.Feature;
 import io.quarkiverse.chappie.deployment.devservice.ollama.OllamaBuildItem;
+import io.quarkus.assistant.deployment.Assistant;
+import io.quarkus.assistant.deployment.AssistantBuildItem;
+import io.quarkus.assistant.deployment.AssistantConsoleBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -21,9 +24,6 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
-import io.quarkus.deployment.dev.assistant.Assistant;
-import io.quarkus.deployment.dev.assistant.AssistantBuildItem;
-import io.quarkus.deployment.dev.assistant.AssistantConsoleBuildItem;
 import io.vertx.core.Vertx;
 
 /**

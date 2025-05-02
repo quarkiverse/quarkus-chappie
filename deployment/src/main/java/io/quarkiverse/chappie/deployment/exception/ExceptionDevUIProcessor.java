@@ -9,7 +9,9 @@ import java.util.function.BiConsumer;
 import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
 import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkiverse.chappie.deployment.UserWorkspaceBuildItem;
+import io.quarkus.assistant.deployment.Assistant;
+import io.quarkus.assistant.deployment.AssistantBuildItem;
+import io.quarkus.assistant.deployment.AssistantConsoleBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -17,12 +19,10 @@ import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.dev.ExceptionNotificationBuildItem;
-import io.quarkus.deployment.dev.assistant.Assistant;
-import io.quarkus.deployment.dev.assistant.AssistantBuildItem;
-import io.quarkus.deployment.dev.assistant.AssistantConsoleBuildItem;
 import io.quarkus.deployment.dev.testing.MessageFormat;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.Page;
+import io.quarkus.devui.spi.workspace.WorkspaceBuildItem;
 import io.quarkus.runtime.logging.DecorateStackUtil;
 import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
 import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
@@ -43,7 +43,7 @@ class ExceptionDevUIProcessor {
     void setupBroadcaster(BuildProducer<ExceptionNotificationBuildItem> exceptionNotificationProducer,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
-            UserWorkspaceBuildItem workspaceBuildItem) {
+            WorkspaceBuildItem workspaceBuildItem) {
 
         exceptionNotificationProducer
                 .produce(new ExceptionNotificationBuildItem(new BiConsumer<Throwable, StackTraceElement>() {
@@ -84,7 +84,7 @@ class ExceptionDevUIProcessor {
     void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
             BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             BuildProducer<AssistantConsoleBuildItem> assistantConsoleProducer,
-            UserWorkspaceBuildItem workspaceBuildItem,
+            WorkspaceBuildItem workspaceBuildItem,
             AssistantBuildItem assistantBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
