@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment;
+package io.quarkiverse.chappie.runtime.dev;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -20,8 +20,7 @@ public class JsonObjectCreator {
         commonInputNode = objectMapper.createObjectNode();
         commonInputNode.put("programmingLanguage", "Java / Kotlin"); // TODO: Find a clean way to decide if this is Kotlin or Java
         commonInputNode.put("programmingLanguageVersion", System.getProperty("java.version"));
-        commonInputNode.put("product", "Quarkus");
-        commonInputNode.put("productVersion", Version.getVersion());
+        commonInputNode.put("quarkusVersion", Version.getVersion());
     }
 
     public static String getWorkspaceInput(String systemmessageTemplate, String usermessageTemplate,

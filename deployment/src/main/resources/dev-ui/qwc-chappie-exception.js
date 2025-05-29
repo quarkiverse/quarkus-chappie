@@ -10,13 +10,18 @@ import '@qomponent/qui-code-block';
 import { observeState } from 'lit-element-state';
 import { themeState } from 'theme-state';
 import { notifier } from 'notifier';
-import { dialogFooterRenderer, dialogRenderer } from '@vaadin/dialog/lit.js';
+import { dialogFooterRenderer, dialogRenderer, dialogHeaderRenderer } from '@vaadin/dialog/lit.js';
+import 'qwc-no-data';
+import 'qui-assistant-warning';
+import { assistantState } from 'assistant-state';
+import { RouterController } from 'router-controller';
 
 /**
  * This component shows the last exception
  */
 export class QwcChappieException extends observeState(QwcHotReloadElement) { 
     jsonRpc = new JsonRpc(this);
+    routerController = new RouterController(this);
 
     static styles = css`
         :host {
@@ -70,7 +75,8 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     static properties = {
         _lastException: {state: true},
         _suggestedFix: {state: true},
-        _showProgressBar: {state: true}
+        _showProgressBar: {state: true},
+        _loadedConfiguration: { state: true }
     };
 
     constructor() { 
@@ -82,6 +88,8 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
 
     connectedCallback() {
         super.connectedCallback();
+        
+        
         // Subscribe to real-time exceptions
         this._observer = this.jsonRpc.streamException().onNext(jsonRpcResponse => { 
             this._lastException = jsonRpcResponse.result;
@@ -90,14 +98,12 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
         // Get the current last know exception
         this._checkLastException();
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const autoSuggest = urlParams.get('autoSuggest');
-        if(autoSuggest){
-            this._suggestFix();
-        }
+        
+        if(!this._loadedConfiguration)this._init(); 
     }
 
     hotReload(){
+        this._init();
         this._lastException = null;
         this._checkLastException();
     }
@@ -114,14 +120,23 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                         ${this._renderLoadingDialog()}
                         ${this._renderAIResponseDialog()}`;
         } else {
-            return html`<div class="nothing">No exception detected yet. <span class="checkNow" @click="${this._checkLastException}">Check now</span></div>`;
+            return html`<qwc-no-data message="No exception detected yet.">
+                            ${this._renderCheckNowButton()}
+                </qwc-no-data>`;
         }
+    }
+    
+    _renderCheckNowButton(){
+        return html`<vaadin-button theme="tertiary" @click=${this._checkLastException}>
+                        <vaadin-icon icon="font-awesome-solid:repeat"></vaadin-icon>
+                        Check now
+                    </vaadin-button>`;
     }
     
     _renderLoadingDialog(){
         if(this._showProgressBar) {
             return html`<vaadin-confirm-dialog
-                            header="Talking to AI..."
+                            header="Talking to the Quarkus AI Assistant..."
                             confirm-text="Cancel"
                             confirm-theme="error secondary"
                             .opened="${this._showProgressBar}"
@@ -147,11 +162,12 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     _renderAIResponseDialog(){
         if(this._suggestedFix) {
             return html`<vaadin-dialog
-                            header-title="Suggested fix from AI"
+                            header-title=""
                             resizable
                             draggable
                             .opened="${this._suggestedFix}"
                             @opened-changed="${this._aiResponseDialogOpenChanged}"
+                            ${dialogHeaderRenderer(this._renderAIResponseDialogHeader, [])}
                             ${dialogRenderer(this._renderAIResponseDialogContent, [])}
                             ${dialogFooterRenderer(this._renderAIResponseDialogFooter, [])}
                         ></vaadin-dialog>`;
@@ -165,6 +181,15 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
             event.target.opened = true;
         }
     }
+    
+    _renderAIResponseDialogHeader() {
+        return html`
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span style="font-weight: bold;font-size: x-large;">Suggested fix from the Quarkus AI Assistant</span>
+            <qui-assistant-warning></qui-assistant-warning>
+          </div>
+        `;
+      }
     
     _renderAIResponseDialogContent(){
         return html`<div class="fix">
@@ -262,14 +287,20 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     }
     
     _suggestFix(){
-        this._initTalkToAI()
-        // Get the current last know exception
-        this.jsonRpc.suggestFix().then(jsonRpcResponse => {
-            if(this._showProgressBar){
-                this._suggestedFix = jsonRpcResponse.result;
-            }
-            this._termTalkToAI();
-        });
+        if(assistantState.current.isConfigured){
+            this._initTalkToAI();
+            // Get the current last know exception
+            this.jsonRpc.suggestFix().then(jsonRpcResponse => {
+                if(this._showProgressBar){
+                    this._suggestedFix = jsonRpcResponse.result;
+                }
+                this._termTalkToAI();
+            });
+        } else {
+            const currentPath = window.location.pathname;
+            const newPath = currentPath.replace(/[^/]+$/, 'configuration');
+            this.routerController.navigate(newPath + "?back=" + encodeURIComponent(currentPath));
+        }
     }
     
     _applyFix(){
@@ -294,6 +325,24 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
             .catch(err => {
                 notifier.showErrorMessage("Failed to copy content:" + err);
             });
+    }
+    
+    _init(){
+        this.jsonRpc.loadConfiguration().then(jsonRpcResponse => { 
+            this._loadedConfiguration = jsonRpcResponse.result;
+            if(this._loadedConfiguration && this._loadedConfiguration.name){
+                assistantState.ready();
+            }else{
+                assistantState.available();
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoSuggest = urlParams.get('autoSuggest');
+            if(autoSuggest){
+                this._suggestFix();
+            }
+            
+        });
     }
 }
 customElements.define('qwc-chappie-exception', QwcChappieException);

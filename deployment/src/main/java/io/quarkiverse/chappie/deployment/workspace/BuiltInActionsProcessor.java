@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.action;
+package io.quarkiverse.chappie.deployment.workspace;
 
 import java.io.File;
 import java.net.URI;
@@ -8,9 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.quarkus.assistant.deployment.Assistant;
-import io.quarkus.assistant.deployment.AssistantBuildItem;
-import io.quarkus.deployment.IsDevelopment;
+import io.quarkus.assistant.runtime.dev.Assistant;
+import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
@@ -21,31 +20,24 @@ import io.quarkus.devui.spi.workspace.DisplayType;
 import io.quarkus.devui.spi.workspace.Patterns;
 import io.quarkus.devui.spi.workspace.WorkspaceActionBuildItem;
 
-@BuildSteps(onlyIf = IsDevelopment.class)
+@BuildSteps(onlyIf = IsLocalDevelopment.class)
 class BuiltInActionsProcessor {
 
     @BuildStep
-    void createBuiltInActions(BuildProducer<WorkspaceActionBuildItem> workspaceActionProducer,
-            Optional<AssistantBuildItem> assistantBuildItem) {
-
-        if (assistantBuildItem.isPresent()) {
-
-            final Assistant assistant = assistantBuildItem.get().getAssistant();
-
-            workspaceActionProducer.produce(new WorkspaceActionBuildItem(
-                    getAddJavaDocAction(assistant),
-                    getTestGenerationAction(assistant),
-                    getExplainAction(assistant)));
-
-        }
+    void createBuiltInActions(BuildProducer<WorkspaceActionBuildItem> workspaceActionProducer) {
+        workspaceActionProducer.produce(new WorkspaceActionBuildItem(
+                getAddJavaDocAction(),
+                getTestGenerationAction(),
+                getExplainAction()));
 
     }
 
-    private ActionBuilder getAddJavaDocAction(final Assistant assistant) {
+    private ActionBuilder getAddJavaDocAction() {
         return Action.actionBuilder()
                 .label("Add JavaDoc")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(JAVADOC_SYSTEM_MESSAGE), JAVADOC_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
@@ -55,11 +47,12 @@ class BuiltInActionsProcessor {
                 .filter(Patterns.JAVA_ANY);
     }
 
-    private ActionBuilder getTestGenerationAction(final Assistant assistant) {
+    private ActionBuilder getTestGenerationAction() {
         return Action.actionBuilder()
                 .label("Generate Test")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(TESTGENERATION_SYSTEM_MESSAGE), TESTGENERATION_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
@@ -77,18 +70,19 @@ class BuiltInActionsProcessor {
                 .filter(Patterns.JAVA_SRC);
     }
 
-    private ActionBuilder getExplainAction(final Assistant assistant) {
+    private ActionBuilder getExplainAction() {
         return Action.actionBuilder()
                 .label("Explain")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(EXPLAIN_SYSTEM_MESSAGE), EXPLAIN_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
                 .display(Display.split)
                 .displayType(DisplayType.markdown)
                 .namespace(NAMESPACE)
-                .filter(Patterns.JAVA_ANY); // TODO: Change to TEXT (Needs change in Quarkus)
+                .filter(Patterns.ANY_KNOWN_TEXT);
     }
 
     private Path getPath(Map params) {

@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.devservice;
+package io.quarkiverse.chappie.runtime.dev;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,17 +12,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-import io.quarkiverse.chappie.deployment.JsonObjectCreator;
-import io.quarkiverse.chappie.deployment.exception.ExceptionOutput;
-import io.quarkus.assistant.deployment.Assistant;
+import io.quarkus.assistant.runtime.dev.Assistant;
 
 public class ChappieAssistant implements Assistant {
 
-    private final String baseUrl;
-
-    public ChappieAssistant(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
+    private String baseUrl = null;
 
     @Override
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
@@ -53,6 +47,19 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
+    @Override
+    public boolean isAvailable() {
+        return this.baseUrl != null;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
     private <T> CompletionStage<T> send(String method, String jsonPayload, Class<T> responseType) {
         return send(createHttpRequest(method, jsonPayload), responseType);
     }
@@ -77,11 +84,15 @@ public class ChappieAssistant implements Assistant {
     }
 
     private HttpRequest createHttpRequest(String method, String jsonPayload) {
-        return HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/" + method))
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
-                .build();
+        if (isAvailable()) {
+            return HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/" + method))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                    .build();
+        } else {
+            throw new IllegalStateException("Chappie server is not configured");
+        }
     }
 }
