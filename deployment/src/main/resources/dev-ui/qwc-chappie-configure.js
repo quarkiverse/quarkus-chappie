@@ -11,11 +11,13 @@ import '@vaadin/number-field';
 import { notifier } from 'notifier';
 import { RouterController } from 'router-controller';
 import { assistantState } from 'assistant-state';
+import { themeState } from 'theme-state';
+import { observeState } from 'lit-element-state';
 
 /**
  * This component allows Chappie configuration
  */
-export class QwcChappieConfigure extends QwcHotReloadElement { 
+export class QwcChappieConfigure extends observeState(QwcHotReloadElement) { 
     jsonRpc = new JsonRpc(this);
     routerController = new RouterController(this);
     
@@ -91,35 +93,30 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
             {
                 name: "OpenAI", 
                 description: "Leading AI company that builds advanced language models like ChatGPT to power intelligent applications.", 
-                logoUrl: "./OpenAI.png",
                 defaultModel: "gpt-4o-mini",
                 defaultBaseUrl: ""
             }, 
             {
                 name:"Ollama", 
                 description: "A platform for running and managing large language models locally with ease.",
-                logoUrl: "./Ollama.png",
                 defaultModel: "codellama",
                 defaultBaseUrl: "http://localhost:11434/"
             },
             {
                 name:"Podman AI", 
                 description: "Integrates AI features into container workflows, enabling local, secure, and containerized AI model deployment.",
-                logoUrl: "./Podman.png",
                 defaultModel: "llama3:instruct",
                 defaultBaseUrl: ""
             },
             {
                 name: "OpenShift AI", 
                 description: "Red Hat’s enterprise AI platform, supporting OpenAI-compatible models with secure, scalable deployments.",
-                logoUrl: "./OpenshiftAI.png",
                 defaultModel: "",
                 defaultBaseUrl: ""
             },
             {
                 name: "Generic OpenAI-Compatible", 
                 description: "Connect any OpenAI-compatible endpoint by providing your own base URL and API key.",
-                logoUrl: "./GenericAI.png",
                 defaultModel: "llama3:instruct",
                 defaultBaseUrl: ""
             }
@@ -185,11 +182,7 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         if(this._selectedProvider){
             return html`<div class="step2">
                 <div class="formheader">
-                    <vaadin-avatar
-                        .img="${this._selectedProvider?.logoUrl}"
-                        .name="${`${this._selectedProvider?.name}`}"
-                    ></vaadin-avatar>
-    
+                    ${this._renderLogo()}
                     <h3>${this._selectedProvider.name}</h3>
                 </div>
                 <div class="form">
@@ -198,6 +191,17 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
             `;
         }
             
+    }
+    
+    _renderLogo(name){
+        if(!name && this._selectedProvider && this._selectedProvider.name)name = this._selectedProvider.name;
+        
+        if(name){
+            let logo = "./" + name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
+            if(logo){
+                return html`<img src="${logo}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
+            }
+        }
     }
     
     _renderProviderForm(){
@@ -369,18 +373,14 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
     }
     
     _providerComboRenderer(provider){
-        return html`<div style="display: flex;">
-            <img
-              style="height: var(--lumo-size-m); margin-right: var(--lumo-space-s);"
-              src="${provider.logoUrl}"
-              alt="Logo of ${provider.name}"
-            />
+        return html`<div style="display: flex;justify-content: space-between;">
             <div>
               ${provider.name}
               <div style="font-size: var(--lumo-font-size-s); color: var(--lumo-secondary-text-color);">
                 ${provider.description}
               </div>
             </div>
+            ${this._renderLogo(provider.name)}
           </div>`;
     }
     
@@ -407,11 +407,8 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         
             if(!model)model = this._selectedProvider.defaultModel;
 
-            const fullLogoPath = new URL(this._selectedProvider.logoUrl, window.location.href).pathname;
-
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                logoUrl:fullLogoPath,
                 apiKey,
                 model
             });
@@ -427,11 +424,8 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         if(!model)model = this._selectedProvider.defaultModel;
         if(!baseUrl)baseUrl = this._selectedProvider.defaultBaseUrl;
 
-        const fullLogoPath = new URL(this._selectedProvider.logoUrl, window.location.href).pathname;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            logoUrl:fullLogoPath,
             baseUrl,
             model
         });
@@ -446,11 +440,8 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         if(baseUrl){
             if(!model)model = this._selectedProvider.defaultModel;
         
-            const fullLogoPath = new URL(this._selectedProvider.logoUrl, window.location.href).pathname;
-        
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                logoUrl:fullLogoPath,
                 apiKey: "sk-dummy",
                 baseUrl,
                 model
@@ -465,11 +456,8 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         let apiKey = this.shadowRoot.querySelector('#openshift-api-key')?.value;
         let model = this.shadowRoot.querySelector('#openshift-model')?.value;
 
-        const fullLogoPath = new URL(this._selectedProvider.logoUrl, window.location.href).pathname;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            logoUrl:fullLogoPath,
             baseUrl,
             apiKey,
             model
@@ -481,11 +469,8 @@ export class QwcChappieConfigure extends QwcHotReloadElement {
         let apiKey = this.shadowRoot.querySelector('#generic-api-key')?.value;
         let model = this.shadowRoot.querySelector('#generic-model')?.value;
 
-        const fullLogoPath = new URL(this._selectedProvider.logoUrl, window.location.href).pathname;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            logoUrl:fullLogoPath,
             baseUrl,
             apiKey,
             model

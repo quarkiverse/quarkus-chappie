@@ -2,6 +2,7 @@ import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { pages } from 'build-time-data';
 import { JsonRpc } from 'jsonrpc';
 import { devuiState } from 'devui-state';
+import { themeState } from 'theme-state';
 import 'qwc/qwc-extension-link.js';
 import '@vaadin/progress-bar';
 import '@vaadin/horizontal-layout';
@@ -15,13 +16,9 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
     static styles = css`
       .identity {
         display: flex;
-        justify-content: flex-start;
-      }
-
-      .configHeader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        padding-bottom: 10px;
+        color: var(--lumo-contrast-50pct);
+        gap: 10px;
       }
 
       .config {
@@ -48,6 +45,18 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
         display: flex;
         flex-flow: column wrap;
         padding-top: 5px;
+      }
+    
+      .cardContents {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: column;
+        height: 100%;
+      }
+    
+      .modelInfo {
+        display: flex;
+        justify-content: center;
       }
     `;
 
@@ -82,6 +91,7 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
     render() {
         return html`<div class="card-content" slot="content">
             <div class="identity">
+                ${this._renderLogo()}
                 <div class="description">${this.description}</div>
             </div>
             ${this._renderContent()}
@@ -90,20 +100,18 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
     }
 
     _renderContent(){
-            return html`
-                ${this._renderInfo()}
-                ${this._renderCardLinks()}
-            `;
+            return html`<div class="cardContents">
+                            ${this._renderCardLinks()}
+                            ${this._renderInfo()}
+                        </div>`;
     }
 
     _renderInfo(){
         if(assistantState.current.isConfigured){
-            return html`<div class="configHeader">
-                            <div class="config">Using ${this._loadedConfiguration?.name} (${this._loadedConfiguration?.model})</div>
-                            <vaadin-avatar
-                                .img="${this._loadedConfiguration?.logoUrl}"
-                                .name="${`${this._loadedConfiguration?.name}`}"
-                            ></vaadin-avatar>
+            return html`<div class="modelInfo">
+                            <qui-badge small>
+                                <span>${this._loadedConfiguration?.name} (${this._loadedConfiguration?.model})</span>
+                            </qui-badge>
                         </div>`;
         }else{
             return html`<div class="config">
@@ -112,9 +120,18 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
         }
     }
 
+    _renderLogo(){
+        if(themeState.theme.name && this._loadedConfiguration && this._loadedConfiguration.name){
+            let logo = "./" + this.namespace + "/" + this._loadedConfiguration.name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
+            if(logo){
+                return html`<img src="${logo}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
+            }
+        }
+    }
+
     _renderCardLinks(){
-        return html`
-            ${pages.map(page => this._renderPageLink(page))}`;
+        return html`<div>
+            ${pages.map(page => this._renderPageLink(page))}</div>`;
     }
 
     _renderPageLink(page){
