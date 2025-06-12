@@ -1,18 +1,16 @@
 package io.quarkiverse.chappie.deployment.exception;
 
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
-import io.quarkiverse.chappie.deployment.ChappieAvailableBuildItem;
-import io.quarkiverse.chappie.deployment.ChappiePageBuildItem;
 import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkus.assistant.deployment.Assistant;
-import io.quarkus.assistant.deployment.AssistantBuildItem;
-import io.quarkus.assistant.deployment.AssistantConsoleBuildItem;
-import io.quarkus.deployment.IsDevelopment;
+import io.quarkiverse.chappie.runtime.dev.ExceptionOutput;
+import io.quarkus.assistant.deployment.spi.AssistantConsoleBuildItem;
+import io.quarkus.assistant.deployment.spi.AssistantPageBuildItem;
+import io.quarkus.assistant.runtime.dev.Assistant;
+import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
@@ -28,7 +26,7 @@ import io.quarkus.vertx.http.deployment.ErrorPageActionsBuildItem;
 import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 
-@BuildSteps(onlyIf = IsDevelopment.class)
+@BuildSteps(onlyIf = IsLocalDevelopment.class)
 class ExceptionDevUIProcessor {
     private static final String EXCEPTION_TITLE = "Exception help";
 
@@ -59,124 +57,119 @@ class ExceptionDevUIProcessor {
     }
 
     @BuildStep
-    void addActionToErrorPage(Optional<ChappieAvailableBuildItem> chappieAvailable,
-            BuildProducer<ErrorPageActionsBuildItem> errorPageActionsProducer,
+    void addActionToErrorPage(BuildProducer<ErrorPageActionsBuildItem> errorPageActionsProducer,
             NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
-        if (chappieAvailable.isPresent()) {
-            String url = nonApplicationRootPathBuildItem.resolvePath(
-                    "dev-ui/io.quarkiverse.chappie.quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
-            errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url + "?autoSuggest=true"));
-        }
+        String url = nonApplicationRootPathBuildItem.resolvePath(
+                "dev-ui/io.quarkiverse.chappie.quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
+        errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url + "?autoSuggest=true"));
     }
 
     @BuildStep
-    void exceptionPage(Optional<ChappieAvailableBuildItem> chappieAvailable,
-            BuildProducer<ChappiePageBuildItem> chappiePageBuildItem) {
-        if (chappieAvailable.isPresent()) {
-            chappiePageBuildItem.produce(new ChappiePageBuildItem(Page.webComponentPageBuilder()
-                    .icon("font-awesome-solid:bug")
-                    .title(EXCEPTION_TITLE)
-                    .componentLink("qwc-chappie-exception.js")));
-        }
+    void exceptionPage(BuildProducer<AssistantPageBuildItem> assistantPageBuildItem) {
+        assistantPageBuildItem.produce(new AssistantPageBuildItem(Page.webComponentPageBuilder()
+                .icon("font-awesome-solid:bug")
+                .title(EXCEPTION_TITLE)
+                .componentLink("qwc-chappie-exception.js")));
     }
 
     @BuildStep
-    void createBuildTimeActions(Optional<ChappieAvailableBuildItem> chappieAvailable,
-            BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
+    void createBuildTimeActions(BuildProducer<BuildTimeActionBuildItem> buildTimeActionProducer,
             BuildProducer<AssistantConsoleBuildItem> assistantConsoleProducer,
             WorkspaceBuildItem workspaceBuildItem,
-            AssistantBuildItem assistantBuildItem,
             BroadcastsBuildItem broadcastsBuildItem,
             LastExceptionBuildItem lastExceptionBuildItem,
             LastSolutionBuildItem lastSolutionBuildItem) {
 
-        if (chappieAvailable.isPresent()) {
+        BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
 
-            BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
+        // This gets the last know exception. For initial load.
+        buildItemActions.addAction("getLastException", ignored -> {
+            LastException lastException = lastExceptionBuildItem.getLastException().get();
+            if (lastException != null) {
+                return lastException;
+            }
+            return null;
+        });
 
-            // This gets the last know exception. For initial load.
-            buildItemActions.addAction("getLastException", ignored -> {
-                LastException lastException = lastExceptionBuildItem.getLastException().get();
-                if (lastException != null) {
-                    return lastException;
-                }
-                return null;
-            });
+        // This streams exceptions as they happen
+        buildItemActions.addSubscription("streamException", ignored -> {
+            return broadcastsBuildItem.getLastExceptionPublisher();
+        });
 
-            // This streams exceptions as they happen
-            buildItemActions.addSubscription("streamException", ignored -> {
-                return broadcastsBuildItem.getLastExceptionPublisher();
-            });
+        // This suggest fix based on exception and code
+        buildItemActions.addAssistantAction("suggestFix", (a, ignored) -> {
+            Assistant assistant = (Assistant) a;
+            LastException lastException = lastExceptionBuildItem.getLastException().get();
+            if (lastException != null) {
+                Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
+                        workspaceBuildItem.getPaths());
+                if (sourcePath != null) {
+                    String stacktraceString = lastException.getStackTraceString();
+                    CompletionStage<ExceptionOutput> response = assistant.exceptionBuilder()
+                            .userMessage("The stacktrace is a Java exception")
+                            .stacktrace(stacktraceString)
+                            .path(sourcePath)
+                            .explain();
+                    response.thenAccept((suggestedFix) -> {
+                        lastSolutionBuildItem.getLastSolution().set(suggestedFix);
+                        lastSolutionBuildItem.getPath().set(sourcePath);
+                    });
+                    return response;
+                } // TODO: We can still attempt this if we could not find a relevant file
+            }
+            return null;
+        });
 
-            // This suggest fix based on exception and code
-            buildItemActions.addAction("suggestFix", ignored -> {
-                LastException lastException = lastExceptionBuildItem.getLastException().get();
-                if (lastException != null) {
-                    Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
+        // This suggest fix based on exception and code
+        buildItemActions.addAction("applyFix", code -> {
+            ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
+            Path path = lastSolutionBuildItem.getPath().get();
+            if (exceptionOutput != null && path != null) {
+                lastSolutionBuildItem.getLastSolution().set(null);
+                lastSolutionBuildItem.getPath().set(null);
+                return ContentIO.writeContent(path, exceptionOutput.manipulatedContent());
+            }
+            return null;
+        });
+
+        buildTimeActionProducer.produce(buildItemActions);
+
+        // Also allow user to do this in the console
+
+        assistantConsoleProducer.produce(AssistantConsoleBuildItem.builder()
+                .description("Help with the latest exception")
+                .key('a')
+                .colorSupplier(() -> MessageFormat.RED)
+                .stateSupplier(() -> getInitMessage(lastExceptionBuildItem))
+                .function((Assistant assistant) -> {
+                    LastException lastException = lastExceptionBuildItem.getLastException().get();
+                    if (lastException == null) {
+                        return CompletableFuture.completedFuture("");
+                    }
+
+                    Path sourcePath = DecorateStackUtil.findAffectedPath(
+                            lastException.stackTraceElement().getClassName(),
                             workspaceBuildItem.getPaths());
+                    String stacktraceString = lastException.getStackTraceString();
 
-                    Assistant assistant = assistantBuildItem.getAssistant();
-                    if (sourcePath != null) {
-                        String stacktraceString = lastException.getStackTraceString();
-                        CompletionStage<ExceptionOutput> response = assistant
-                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath);
-                        response.thenAccept((suggestedFix) -> {
-                            lastSolutionBuildItem.getLastSolution().set(suggestedFix);
-                            lastSolutionBuildItem.getPath().set(sourcePath);
-                        });
-                        return response;
-                    } // TODO: We can still attempt this if we could not find a relevant file
-                }
-                return null;
-            });
+                    return assistant.exceptionBuilder()
+                            .systemMessage("The stacktrace is a Java exception")
+                            .stacktrace(stacktraceString)
+                            .path(sourcePath)
+                            .explain()
 
-            // This suggest fix based on exception and code
-            buildItemActions.addAction("applyFix", code -> {
-                ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
-                Path path = lastSolutionBuildItem.getPath().get();
-                if (exceptionOutput != null && path != null) {
-                    lastSolutionBuildItem.getLastSolution().set(null);
-                    lastSolutionBuildItem.getPath().set(null);
-                    return ContentIO.writeContent(path, exceptionOutput.manipulatedContent());
-                }
-                return null;
-            });
+                            .thenApply((Object output) -> {
+                                ExceptionOutput exceptionOutput = (ExceptionOutput) output;
 
-            buildTimeActionProducer.produce(buildItemActions);
-
-            // Also allow user to do this in the console
-
-            assistantConsoleProducer.produce(AssistantConsoleBuildItem.builder()
-                    .description("Help with the latest exception")
-                    .key('a')
-                    .colorSupplier(() -> MessageFormat.RED)
-                    .stateSupplier(() -> getInitMessage(lastExceptionBuildItem))
-                    .function((Assistant assistant) -> {
-                        LastException lastException = lastExceptionBuildItem.getLastException().get();
-                        if (lastException == null) {
-                            return CompletableFuture.completedFuture("");
-                        }
-
-                        Path sourcePath = DecorateStackUtil.findAffectedPath(
-                                lastException.stackTraceElement().getClassName(),
-                                workspaceBuildItem.getPaths());
-                        String stacktraceString = lastException.getStackTraceString();
-
-                        return assistant
-                                .exception("The stacktrace is a Java exception", stacktraceString, sourcePath)
-                                .thenApply((Object output) -> {
-                                    ExceptionOutput exceptionOutput = (ExceptionOutput) output;
-
-                                    return "\n\n" + exceptionOutput.response() +
-                                            "\n\n" + exceptionOutput.explanation() +
-                                            "\n------ Diff ------ " +
-                                            "\n\n" + exceptionOutput.diff() +
-                                            "\n------ Suggested source ------ " +
-                                            "\n\n" + exceptionOutput.manipulatedContent();
-                                });
-                    })
-                    .build());
-        }
+                                return "\n\n" + exceptionOutput.response() +
+                                        "\n\n" + exceptionOutput.explanation() +
+                                        "\n------ Diff ------ " +
+                                        "\n\n" + exceptionOutput.diff() +
+                                        "\n------ Suggested source ------ " +
+                                        "\n\n" + exceptionOutput.manipulatedContent();
+                            });
+                })
+                .build());
     }
 
     private String getInitMessage(LastExceptionBuildItem lastExceptionBuildItem) {

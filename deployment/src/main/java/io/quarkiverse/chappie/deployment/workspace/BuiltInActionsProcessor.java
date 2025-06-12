@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.action;
+package io.quarkiverse.chappie.deployment.workspace;
 
 import java.io.File;
 import java.net.URI;
@@ -8,9 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.quarkus.assistant.deployment.Assistant;
-import io.quarkus.assistant.deployment.AssistantBuildItem;
-import io.quarkus.deployment.IsDevelopment;
+import io.quarkus.assistant.runtime.dev.Assistant;
+import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
@@ -21,31 +20,25 @@ import io.quarkus.devui.spi.workspace.DisplayType;
 import io.quarkus.devui.spi.workspace.Patterns;
 import io.quarkus.devui.spi.workspace.WorkspaceActionBuildItem;
 
-@BuildSteps(onlyIf = IsDevelopment.class)
+@BuildSteps(onlyIf = IsLocalDevelopment.class)
 class BuiltInActionsProcessor {
 
     @BuildStep
-    void createBuiltInActions(BuildProducer<WorkspaceActionBuildItem> workspaceActionProducer,
-            Optional<AssistantBuildItem> assistantBuildItem) {
-
-        if (assistantBuildItem.isPresent()) {
-
-            final Assistant assistant = assistantBuildItem.get().getAssistant();
-
-            workspaceActionProducer.produce(new WorkspaceActionBuildItem(
-                    getAddJavaDocAction(assistant),
-                    getTestGenerationAction(assistant),
-                    getExplainAction(assistant)));
-
-        }
+    void createBuiltInActions(BuildProducer<WorkspaceActionBuildItem> workspaceActionProducer) {
+        workspaceActionProducer.produce(new WorkspaceActionBuildItem(
+                getAddJavaDocAction(),
+                getTestGenerationAction(),
+                getExplainAction(),
+                getCompleteTodoAction()));
 
     }
 
-    private ActionBuilder getAddJavaDocAction(final Assistant assistant) {
+    private ActionBuilder getAddJavaDocAction() {
         return Action.actionBuilder()
                 .label("Add JavaDoc")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(JAVADOC_SYSTEM_MESSAGE), JAVADOC_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
@@ -55,11 +48,12 @@ class BuiltInActionsProcessor {
                 .filter(Patterns.JAVA_ANY);
     }
 
-    private ActionBuilder getTestGenerationAction(final Assistant assistant) {
+    private ActionBuilder getTestGenerationAction() {
         return Action.actionBuilder()
                 .label("Generate Test")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(TESTGENERATION_SYSTEM_MESSAGE), TESTGENERATION_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
@@ -77,18 +71,39 @@ class BuiltInActionsProcessor {
                 .filter(Patterns.JAVA_SRC);
     }
 
-    private ActionBuilder getExplainAction(final Assistant assistant) {
+    private ActionBuilder getExplainAction() {
         return Action.actionBuilder()
                 .label("Explain")
-                .function((t) -> {
-                    Map params = (Map) t;
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
                     return assistant.assist(Optional.of(EXPLAIN_SYSTEM_MESSAGE), EXPLAIN_USER_MESSAGE,
                             Map.of("content", getContent(params)), List.of(getPath(params)));
                 })
                 .display(Display.split)
                 .displayType(DisplayType.markdown)
                 .namespace(NAMESPACE)
-                .filter(Patterns.JAVA_ANY); // TODO: Change to TEXT (Needs change in Quarkus)
+                .filter(Patterns.ANY_KNOWN_TEXT);
+    }
+
+    private ActionBuilder getCompleteTodoAction() {
+        return Action.actionBuilder()
+                .label("Complete //TODO:")
+                .assistantFunction((a, p) -> {
+                    Assistant assistant = (Assistant) a;
+                    Map params = (Map) p;
+
+                    String content = getContent(params);
+                    if (content.contains("//TODO:") || content.contains("// TODO:")) {
+                        return assistant.assist(Optional.of(COMPLETE_TODO_SYSTEM_MESSAGE), COMPLETE_TODO_USER_MESSAGE,
+                                Map.of("content", getContent(params)), List.of(getPath(params)));
+                    }
+                    return params;
+                })
+                .display(Display.replace)
+                .displayType(DisplayType.code)
+                .namespace(NAMESPACE)
+                .filter(Patterns.JAVA_ANY);
     }
 
     private Path getPath(Map params) {
@@ -130,13 +145,37 @@ class BuiltInActionsProcessor {
              """;
 
     private static final String JAVADOC_USER_MESSAGE = """
-            I have the following content in this {{product}} project:
+            I have the following content in this Quarkus project:
             ```
             {{content}}
             ```
 
             Please add or modify the JavaDoc to reflect the code. If JavaDoc exist, take that into account when modifying the content.
 
+            """;
+
+    private static final String COMPLETE_TODO_SYSTEM_MESSAGE = """
+             You will receive content that needs to be manipulated. Use the content received as input when considering the response.
+             Also consider the path of the content to determine the file type of the provided content.
+
+             Approach this task step-by-step, take your time and do not skip steps.
+
+             The response must contain 2 fields, path and content.
+
+             Respond with the manipulated content in the content field. This response must be valid. In the content field, include only the manipulated content, no explanation or other text.
+
+             You must not wrap manipulated content in backticks, markdown, or in any other way, but return it as plain text.
+
+             Your job is to complete all TODO comments (eg. //TODO:Here something that needs to be done) in the code as best you can. If needed add comment to explain yourself.
+
+            """;
+    private static final String COMPLETE_TODO_USER_MESSAGE = """
+            I have the following content in this Quarkus project:
+                        ```
+                        {{content}}
+                        ```
+
+                        Please replace any TODO: comments with whatever the comment specifies.
             """;
 
     private static final String TESTGENERATION_SYSTEM_MESSAGE = """
@@ -155,7 +194,7 @@ class BuiltInActionsProcessor {
             """;
 
     private static final String TESTGENERATION_USER_MESSAGE = """
-            I have the following content in this {{product}} project:
+            I have the following content in this Quarkus project:
             ```
             {{content}}
             ```

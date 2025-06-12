@@ -1,4 +1,4 @@
-import { LitElement, html, css} from 'lit';
+import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { pages } from 'build-time-data';
 import { JsonRpc } from 'jsonrpc';
 import { devuiState } from 'devui-state';
@@ -6,10 +6,9 @@ import 'qwc/qwc-extension-link.js';
 import '@vaadin/progress-bar';
 import '@vaadin/horizontal-layout';
 import '@qomponent/qui-badge';
-import { llm } from 'build-time-data';
-import { modelName } from 'build-time-data';
+import { assistantState } from 'assistant-state';
 
-export class QwcChappieCustomCard extends LitElement {
+export class QwcChappieCustomCard extends QwcHotReloadElement {
 
     jsonRpc = new JsonRpc(this);
     
@@ -17,6 +16,12 @@ export class QwcChappieCustomCard extends LitElement {
       .identity {
         display: flex;
         justify-content: flex-start;
+      }
+
+      .configHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .config {
@@ -51,24 +56,27 @@ export class QwcChappieCustomCard extends LitElement {
         description: {attribute: true},
         guide: {attribute: true},
         namespace: {attribute: true},
-        _llm: {state: true},
-        _modelName: {state: true}
+        _loadedConfiguration: { state: true }
     };
 
 
     constructor() {
         super();
-        this._llm = llm;
-        this._modelName = modelName;
+        this._loadedConfiguration = null;
     }
 
     connectedCallback() {
         super.connectedCallback();
+        if(!this._loadedConfiguration)this._loadConfiguration();   
+    }
+
+    hotReload(){
+        this._loadConfiguration();
     }
 
     disconnectedCallback() {
         if(this._observer)this._observer.cancel();
-        super.disconnectedCallback();      
+        super.disconnectedCallback();
     }
 
     render() {
@@ -76,42 +84,60 @@ export class QwcChappieCustomCard extends LitElement {
             <div class="identity">
                 <div class="description">${this.description}</div>
             </div>
-            ${this._renderConfig()}
+            ${this._renderContent()}
         </div>
         `;
     }
 
-    _renderConfig(){
+    _renderContent(){
             return html`
                 ${this._renderInfo()}
                 ${this._renderCardLinks()}
             `;
-        
     }
 
     _renderInfo(){
-        return html`<div class="config">Using ${this._llm} (${this._modelName})</div>`;
+        if(assistantState.current.isConfigured){
+            return html`<div class="configHeader">
+                            <div class="config">Using ${this._loadedConfiguration?.name} (${this._loadedConfiguration?.model})</div>
+                            <vaadin-avatar
+                                .img="${this._loadedConfiguration?.logoUrl}"
+                                .name="${`${this._loadedConfiguration?.name}`}"
+                            ></vaadin-avatar>
+                        </div>`;
+        }else{
+            return html`<div class="config">
+                            You need to configure the assistant to make the assistant features available
+                        </div>`;
+        }
     }
 
     _renderCardLinks(){
         return html`
-            ${pages.map(page => html`
-            <qwc-extension-link slot="link"
-                namespace="${this.namespace}"
-                extensionName="${this.extensionName}"
-                iconName="${page.icon}"
-                displayName="${page.title}"
-                staticLabel="${page.staticLabel}"
-                dynamicLabel="${page.dynamicLabel}"
-                streamingLabel="${page.streamingLabel}"
-                path="${page.id}"
-                ?embed=${page.embed}
-                externalUrl="${page.metadata.externalUrl}"
-                dynamicUrlMethodName="${page.metadata.dynamicUrlMethodName}"
-                webcomponent="${page.componentLink}" 
-                draggable="true" @dragstart="${this._handleDragStart}">
-            </qwc-extension-link>
-        `)}`;
+            ${pages.map(page => this._renderPageLink(page))}`;
+    }
+
+    _renderPageLink(page){
+        if(assistantState.current.isConfigured || page.metadata.alwaysVisible){
+        
+            return html`
+                <qwc-extension-link slot="link"
+                    namespace="${this.namespace}"
+                    extensionName="${this.extensionName}"
+                    iconName="${page.icon}"
+                    displayName="${page.title}"
+                    staticLabel="${page.staticLabel}"
+                    dynamicLabel="${page.dynamicLabel}"
+                    streamingLabel="${page.streamingLabel}"
+                    path="${page.id}"
+                    ?embed=${page.embed}
+                    externalUrl="${page.metadata.externalUrl}"
+                    dynamicUrlMethodName="${page.metadata.dynamicUrlMethodName}"
+                    webcomponent="${page.componentLink}" 
+                    draggable="true" @dragstart="${this._handleDragStart}">
+                </qwc-extension-link>
+            `;
+        };
     }
 
     _handleDragStart(event) {
@@ -121,6 +147,17 @@ export class QwcChappieCustomCard extends LitElement {
         const page = extension.cardPages.find(obj => obj.id === pageId);
         const jsonData = JSON.stringify(page);
         event.dataTransfer.setData('application/json', jsonData);
+    }
+    
+    _loadConfiguration(){
+        this.jsonRpc.loadConfiguration().then(jsonRpcResponse => { 
+            this._loadedConfiguration = jsonRpcResponse.result;
+            if(this._loadedConfiguration && this._loadedConfiguration.name){
+                assistantState.ready();
+            }else{
+                assistantState.available();
+            }
+        });
     }
 }
 customElements.define('qwc-chappie-custom-card', QwcChappieCustomCard);

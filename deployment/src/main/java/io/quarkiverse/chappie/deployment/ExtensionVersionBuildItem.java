@@ -1,4 +1,4 @@
-package io.quarkiverse.chappie.deployment.devservice;
+package io.quarkiverse.chappie.deployment;
 
 import io.quarkus.builder.item.SimpleBuildItem;
 

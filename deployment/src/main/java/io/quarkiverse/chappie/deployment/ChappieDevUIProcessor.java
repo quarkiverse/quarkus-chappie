@@ -1,73 +1,53 @@
 package io.quarkiverse.chappie.deployment;
 
 import java.util.List;
-import java.util.Optional;
 
-import io.quarkiverse.chappie.deployment.devservice.ollama.OllamaBuildItem;
-import io.quarkus.deployment.IsDevelopment;
+import io.quarkiverse.chappie.runtime.dev.ChappieServerManager;
+import io.quarkus.assistant.deployment.spi.AssistantPageBuildItem;
+import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
+import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
 import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
+import io.quarkus.devui.spi.page.PageBuilder;
+import io.quarkus.devui.spi.page.WebComponentPageBuilder;
 
-@BuildSteps(onlyIf = IsDevelopment.class)
+@BuildSteps(onlyIf = IsLocalDevelopment.class)
 class ChappieDevUIProcessor {
 
     @BuildStep
-    void pages(List<ChappiePageBuildItem> chappiePageBuildItems,
-            Optional<OllamaBuildItem> ollamaBuildItem,
-            BuildProducer<CardPageBuildItem> cardPageProducer,
-            ChappieConfig config) {
+    AssistantPageBuildItem configurePage() {
+        WebComponentPageBuilder pageBuilder = Page.webComponentPageBuilder()
+                .icon("font-awesome-solid:gear")
+                .title("Configuration")
+                .componentLink("qwc-chappie-configure.js");
 
-        if (config.openai().apiKey().isPresent() || config.openai().baseUrl().isPresent()) {
-            configuredOpenAiPage(chappiePageBuildItems, cardPageProducer, config);
-        } else if (ollamaBuildItem.isPresent()) {
-            configuredOllamaPage(chappiePageBuildItems, cardPageProducer, config);
-        } else {
-            unconfiguredPage(cardPageProducer);
-        }
+        return new AssistantPageBuildItem(pageBuilder, true);
     }
 
-    private void configuredOpenAiPage(List<ChappiePageBuildItem> chappiePageBuildItems,
-            BuildProducer<CardPageBuildItem> cardPageProducer,
-            ChappieConfig config) {
+    @BuildStep
+    void pages(List<AssistantPageBuildItem> assistantPageBuildItems,
+            BuildProducer<CardPageBuildItem> cardPageProducer) {
 
-        configuredPage(chappiePageBuildItems, cardPageProducer, "OpenAI ",
-                config.openai().baseUrl().orElse(config.openai().modelName()));
-    }
+        CardPageBuildItem cardPageBuildItem = new CardPageBuildItem();
+        cardPageBuildItem.setCustomCard("qwc-chappie-custom-card.js");
 
-    private void configuredOllamaPage(List<ChappiePageBuildItem> chappiePageBuildItems,
-            BuildProducer<CardPageBuildItem> cardPageProducer,
-            ChappieConfig config) {
-        configuredPage(chappiePageBuildItems, cardPageProducer, "Ollama", config.ollama().modelName());
-    }
-
-    private void configuredPage(List<ChappiePageBuildItem> chappiePageBuildItems,
-            BuildProducer<CardPageBuildItem> cardPageProducer,
-            String llm, String modelName) {
-        CardPageBuildItem chappieCard = new CardPageBuildItem();
-        chappieCard.setCustomCard("qwc-chappie-custom-card.js");
-
-        chappieCard.addBuildTimeData("llm", llm);
-        chappieCard.addBuildTimeData("modelName", modelName);
-
-        for (ChappiePageBuildItem cpbi : chappiePageBuildItems) {
-            chappieCard.addPage(cpbi.getPageBuilder());
+        for (AssistantPageBuildItem cpbi : assistantPageBuildItems) {
+            PageBuilder pageBuilder = cpbi.getPageBuilder();
+            if (cpbi.isAlwaysVisible()) {
+                pageBuilder.metadata("alwaysVisible", "true");
+            }
+            cardPageBuildItem.addPage(pageBuilder);
         }
 
-        cardPageProducer.produce(chappieCard);
+        cardPageProducer.produce(cardPageBuildItem);
+
     }
 
-    private void unconfiguredPage(BuildProducer<CardPageBuildItem> cardPageProducer) {
-        CardPageBuildItem chappieCard = new CardPageBuildItem();
-
-        chappieCard.addPage(Page.webComponentPageBuilder()
-                .icon("font-awesome-solid:circle-question")
-                .title("Configure assistant")
-                .componentLink("qwc-chappie-unconfigured.js"));
-
-        cardPageProducer.produce(chappieCard);
+    @BuildStep
+    JsonRPCProvidersBuildItem createJsonRPCServiceForCache() {
+        return new JsonRPCProvidersBuildItem(ChappieServerManager.class);
     }
-
 }

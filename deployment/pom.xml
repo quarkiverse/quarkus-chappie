@@ -10,11 +10,17 @@
     <artifactId>quarkus-chappie-deployment</artifactId>
     <name>Quarkus Chappie - Deployment</name>
 
-    <properties>
-        <chappie-server.version>1.0.0</chappie-server.version>
-    </properties>
-
     <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>quarkus-chappie</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>quarkus-chappie-dev</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc-deployment</artifactId>
@@ -55,35 +61,6 @@
                             <version>${quarkus.version}</version>
                         </path>
                     </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.0</version>
-                <executions>
-                    <execution>
-                        <id>copy</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <artifactItems>
-                        <artifactItem>
-                            <groupId>org.chappie-bot</groupId>
-                            <artifactId>chappie-server</artifactId>
-                            <version>${chappie-server.version}</version>
-                            <type>jar</type>
-                            <overWrite>false</overWrite>
-                            <outputDirectory>${project.build.directory}/classes/bin/</outputDirectory>
-                            <destFileName>chappie-server.jar</destFileName>
-                        </artifactItem>
-                    </artifactItems>
-                    <overWriteReleases>false</overWriteReleases>
-                    <overWriteSnapshots>true</overWriteSnapshots>
                 </configuration>
             </plugin>
         </plugins>
