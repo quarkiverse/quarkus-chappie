@@ -1,6 +1,7 @@
 import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { pages } from 'build-time-data';
 import { JsonRpc } from 'jsonrpc';
+import { observeState } from 'lit-element-state';
 import { devuiState } from 'devui-state';
 import { themeState } from 'theme-state';
 import 'qwc/qwc-extension-link.js';
@@ -9,7 +10,7 @@ import '@vaadin/horizontal-layout';
 import '@qomponent/qui-badge';
 import { assistantState } from 'assistant-state';
 
-export class QwcChappieCustomCard extends QwcHotReloadElement {
+export class QwcChappieCustomCard extends observeState(QwcHotReloadElement) {
 
     jsonRpc = new JsonRpc(this);
     
@@ -169,11 +170,6 @@ export class QwcChappieCustomCard extends QwcHotReloadElement {
     _loadConfiguration(){
         this.jsonRpc.loadConfiguration().then(jsonRpcResponse => { 
             this._loadedConfiguration = jsonRpcResponse.result;
-            if(this._loadedConfiguration && this._loadedConfiguration.name){
-                assistantState.ready();
-            }else{
-                assistantState.available();
-            }
         });
     }
 }
