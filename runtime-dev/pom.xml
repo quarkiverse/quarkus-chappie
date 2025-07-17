@@ -13,7 +13,7 @@
     <description>Chappie assistant implementation - Dev mode only</description>
 
     <properties>
-        <chappie-server.version>1.0.1</chappie-server.version>
+        <chappie-server.version>1.0.2</chappie-server.version>
     </properties>
 
     <dependencies>

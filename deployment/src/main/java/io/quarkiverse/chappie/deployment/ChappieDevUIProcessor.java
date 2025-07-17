@@ -33,7 +33,7 @@ class ChappieDevUIProcessor {
 
         CardPageBuildItem cardPageBuildItem = new CardPageBuildItem();
         cardPageBuildItem.setCustomCard("qwc-chappie-custom-card.js");
-
+        cardPageBuildItem.setHeadlessComponentLink("qwc-chappie-init.js");
         for (AssistantPageBuildItem cpbi : assistantPageBuildItems) {
             PageBuilder pageBuilder = cpbi.getPageBuilder();
             if (cpbi.isAlwaysVisible()) {

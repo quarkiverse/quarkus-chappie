@@ -7,7 +7,7 @@ metadata:
   - AI
   - Assistance
   - Assistant
-  guide: https://quarkiverse.github.io/quarkiverse-docs/chappie/dev/
+  guide: https://quarkus.io/guides/assistant
   categories:
   - "miscellaneous"
   status: "stable"
