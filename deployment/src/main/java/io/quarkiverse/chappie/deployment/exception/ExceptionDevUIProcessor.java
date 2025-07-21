@@ -153,7 +153,7 @@ class ExceptionDevUIProcessor {
                     String stacktraceString = lastException.getStackTraceString();
 
                     return assistant.exceptionBuilder()
-                            .systemMessage("The stacktrace is a Java exception")
+                            .userMessage("The stacktrace is a Java exception")
                             .stacktrace(stacktraceString)
                             .path(sourcePath)
                             .explain()
