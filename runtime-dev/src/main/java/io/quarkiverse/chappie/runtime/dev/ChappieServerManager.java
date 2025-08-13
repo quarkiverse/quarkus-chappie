@@ -241,7 +241,7 @@ public class ChappieServerManager {
             Map<String, String> chappieServerArguments = getChappieServerArguments();
 
             List<String> command = new ArrayList<>();
-            command.add("java");
+            command.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
             for (Map.Entry<String, String> es : chappieServerArguments.entrySet()) {
                 command.add("-D" + es.getKey() + "=" + es.getValue());
             }
