@@ -30,8 +30,6 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         }
     
         .steps {
-            border: 1px solid var(--lumo-contrast-10pct);
-            border-radius: 20px;
             display: flex;
             flex-direction: column;
         }
@@ -77,9 +75,22 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             color: var(--lumo-primary-text-color);
             font-family: Arial;
         }
+        .unlistedLinks {
+            display: flex;
+            gap: 30px;
+            justify-content: flex-end;
+        }
+        .unlistedLink {
+            cursor: pointer;
+        }
+        
+        .unlistedLink:hover {
+            filter: brightness(150%);
+        }
     `;
     
     static properties = {
+        namespace: {type: String},
         _allProviders: {state: true},
         _selectedProvider: { state: true },
         _loadedConfiguration: { state: true },
@@ -188,9 +199,35 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 <div class="form">
                     ${this._renderProviderForm()}
                 </div>
+                ${this._renderUnlistedPages()}
             `;
         }
             
+    }
+    
+    _renderUnlistedPages() {
+        if(assistantState.current.isConfigured) {
+            let unlistedPages = this.routerController.getPagesForNamespace(this.namespace);
+            return html`<div class="unlistedLinks">
+                        ${unlistedPages.map((page) =>
+                            html`${this._renderUnlistedPageLink(page)}`
+                        )}
+                    </div>`;
+            
+            
+        }
+    }
+    
+    _renderUnlistedPageLink(page){
+        return html`<div class="unlistedLink" style="color:${page.color};" @click=${() => this._navigateToPage(page)}>
+                        <vaadin-icon icon="${page.icon}"></vaadin-icon> <span>${page.title}</span>
+                    </div>`;
+        
+    }
+    
+    _navigateToPage(page){
+        window.dispatchEvent(new CustomEvent('close-settings-dialog'));
+        this.routerController.go(page);
     }
     
     _renderLogo(name){
@@ -486,8 +523,6 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 assistantState.ready();
                 if(this._navigateBack){
                     this.routerController.navigate(this._navigateBack);
-                }else {
-                    this.routerController.goHome();
                 }
             }
         });

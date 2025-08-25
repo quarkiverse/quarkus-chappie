@@ -297,9 +297,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                 this._termTalkToAI();
             });
         } else {
-            const currentPath = window.location.pathname;
-            const newPath = currentPath.replace(/[^/]+$/, 'configuration');
-            this.routerController.navigate(newPath + "?back=" + encodeURIComponent(currentPath));
+            window.dispatchEvent(new CustomEvent('open-settings-dialog',{detail: {selectedTab : "quarkus-chappie/assistant-tab"}}));
         }
     }
     
@@ -335,13 +333,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
             }else{
                 assistantState.available();
             }
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const autoSuggest = urlParams.get('autoSuggest');
-            if(autoSuggest){
-                this._suggestFix();
-            }
-            
+            this._suggestFix();
         });
     }
 }

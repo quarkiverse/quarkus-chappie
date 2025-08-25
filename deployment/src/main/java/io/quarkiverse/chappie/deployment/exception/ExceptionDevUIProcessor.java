@@ -59,9 +59,10 @@ class ExceptionDevUIProcessor {
     @BuildStep
     void addActionToErrorPage(BuildProducer<ErrorPageActionsBuildItem> errorPageActionsProducer,
             NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
+
         String url = nonApplicationRootPathBuildItem.resolvePath(
-                "dev-ui/io.quarkiverse.chappie.quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
-        errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url + "?autoSuggest=true"));
+                "dev-ui/quarkus-chappie/" + EXCEPTION_TITLE.replace(" ", "-").toLowerCase());
+        errorPageActionsProducer.produce(new ErrorPageActionsBuildItem("Get help with this", url));
     }
 
     @BuildStep

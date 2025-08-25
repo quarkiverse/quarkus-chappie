@@ -9,40 +9,40 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
-import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
 import io.quarkus.devui.spi.page.PageBuilder;
-import io.quarkus.devui.spi.page.WebComponentPageBuilder;
+import io.quarkus.devui.spi.page.SettingPageBuildItem;
+import io.quarkus.devui.spi.page.UnlistedPageBuildItem;
 
 @BuildSteps(onlyIf = IsLocalDevelopment.class)
 class ChappieDevUIProcessor {
 
     @BuildStep
-    AssistantPageBuildItem configurePage() {
-        WebComponentPageBuilder pageBuilder = Page.webComponentPageBuilder()
-                .icon("font-awesome-solid:gear")
-                .title("Configuration")
-                .componentLink("qwc-chappie-configure.js");
+    void configurePage(BuildProducer<SettingPageBuildItem> settingPageProducer) {
+        SettingPageBuildItem assistantSettingTab = new SettingPageBuildItem();
 
-        return new AssistantPageBuildItem(pageBuilder, true);
+        assistantSettingTab.addPage(Page.webComponentPageBuilder()
+                .title("Assistant")
+                .icon("font-awesome-solid:gear")
+                .componentLink("qwc-chappie-configure.js"));
+
+        assistantSettingTab.setHeadlessComponentLink("qwc-chappie-init.js");
+
+        settingPageProducer.produce(assistantSettingTab);
     }
 
     @BuildStep
     void pages(List<AssistantPageBuildItem> assistantPageBuildItems,
-            BuildProducer<CardPageBuildItem> cardPageProducer) {
+            BuildProducer<UnlistedPageBuildItem> unlistedPageProducer) {
 
-        CardPageBuildItem cardPageBuildItem = new CardPageBuildItem();
-        cardPageBuildItem.setCustomCard("qwc-chappie-custom-card.js");
-        cardPageBuildItem.setHeadlessComponentLink("qwc-chappie-init.js");
+        UnlistedPageBuildItem unlistedPageBuildItem = new UnlistedPageBuildItem();
+
         for (AssistantPageBuildItem cpbi : assistantPageBuildItems) {
             PageBuilder pageBuilder = cpbi.getPageBuilder();
-            if (cpbi.isAlwaysVisible()) {
-                pageBuilder.metadata("alwaysVisible", "true");
-            }
-            cardPageBuildItem.addPage(pageBuilder);
+            unlistedPageBuildItem.addPage(pageBuilder);
         }
 
-        cardPageProducer.produce(cardPageBuildItem);
+        unlistedPageProducer.produce(unlistedPageBuildItem);
 
     }
 
