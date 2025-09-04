@@ -1,5 +1,6 @@
 package io.quarkiverse.chappie.runtime.dev;
 
+import java.lang.invoke.MethodHandle;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -11,8 +12,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
+import io.quarkus.dev.console.DevConsoleManager;
 
 public class ChappieAssistant implements Assistant {
 
@@ -22,9 +25,16 @@ public class ChappieAssistant implements Assistant {
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
             String userMessageTemplate,
             Map<String, String> variables, List<Path> paths) {
+
+        String extension = getExtension();
+        if (extension != null && !variables.containsKey("extension")) {
+            variables.put("extension", extension);
+        }
+
         try {
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     variables, paths);
+
             return (CompletionStage<T>) send("assist", jsonPayload, Map.class);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
@@ -95,4 +105,33 @@ public class ChappieAssistant implements Assistant {
             throw new IllegalStateException("Chappie server is not configured");
         }
     }
+
+    private String getExtension() {
+        Class<?> caller = getCallerClass();
+        return getArtifactFromCallerClass(caller);
+    }
+
+    private Class<?> getCallerClass() {
+        // Get the caller class that will be used get the gav
+        StackWalker stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+        stackWalker.walk(frames -> frames.collect(Collectors.toList()));
+
+        Optional<StackWalker.StackFrame> stackFrame = stackWalker.walk(frames -> frames
+                .filter(frame -> (!frame.getDeclaringClass().getPackageName().startsWith("io.quarkiverse.chappie")
+                        && !frame.getDeclaringClass().getPackageName().startsWith("io.quarkus.assistant")
+                        && !frame.getDeclaringClass().equals(MethodHandle.class)))
+                .findFirst());
+
+        if (stackFrame.isPresent()) {
+            return stackFrame.get().getDeclaringClass();
+        } else {
+            return null;
+        }
+    }
+
+    private String getArtifactFromCallerClass(Class<?> caller) {
+        return DevConsoleManager.invoke("chappie.getArtifact", Map.of("caller", caller.getName()));
+    }
+
 }
