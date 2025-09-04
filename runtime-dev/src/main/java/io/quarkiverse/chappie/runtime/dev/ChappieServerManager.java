@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,10 +46,13 @@ public class ChappieServerManager {
 
     private ChappieAssistant assistant;
     private String version;
+    private Map<String, String> chappieRAGProperties;
 
-    public SubmissionPublisher<String> init(String version, ChappieAssistant assistant) {
+    public SubmissionPublisher<String> init(String version, ChappieAssistant assistant,
+            Map<String, String> chappieRAGProperties) {
         this.assistant = assistant;
         this.version = version;
+        this.chappieRAGProperties = chappieRAGProperties;
         if (Files.notExists(configDir)) {
             try {
                 Files.createDirectories(configDir);
@@ -88,6 +92,8 @@ public class ChappieServerManager {
     }
 
     private boolean isInstalled() {
+        if (version.endsWith("SNAPSHOT"))
+            return false; // Always reinstal snapshot
         Path chappieBase = getChappieBaseDir(version);
         if (Files.exists(chappieBase)) {
             Path chappieServer = getChappieServer(chappieBase);
@@ -131,6 +137,14 @@ public class ChappieServerManager {
 
     public Properties loadConfiguration() {
         return load(null);
+    }
+
+    public CompletionStage<Map> chat(String message) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("message", message);
+
+        return this.assistant.assist(Optional.of(CHAT_SYSTEM_MESSAGE), CHAT_USER_MESSAGE, vars,
+                List.of());
     }
 
     private Properties load(String name) {
@@ -276,7 +290,6 @@ public class ChappieServerManager {
             process.destroyForcibly();
 
             setAssistantBaseUrl(null);
-
             stopStreamingLog();
 
             return pid;
@@ -381,6 +394,17 @@ public class ChappieServerManager {
                     properties.put("chappie.ollama.model-name", model);
                 }
             }
+
+            if (this.chappieRAGProperties != null && !this.chappieRAGProperties.isEmpty()) {
+
+                for (Map.Entry<String, String> entry : this.chappieRAGProperties.entrySet()) {
+                    if (!entry.getKey().endsWith(".active")) {
+                        properties.put(entry.getKey().replaceFirst(".chappie.", "."), entry.getValue());
+                    }
+                }
+                properties.put("quarkus.datasource.active", "true");
+            }
+
             return properties;
         }
         return null;
@@ -423,4 +447,15 @@ public class ChappieServerManager {
     private static final String SERVER_PROPERTY_KEY_HOST = "quarkus.http.host";
     private static final String SERVER_PROPERTY_KEY_PORT = "quarkus.http.port";
 
+    private static final String CHAT_SYSTEM_MESSAGE = """
+            You are assisting a Quarkus developer with his/her project. The developer will ask a question that you should answer as good as possible, using the provided
+            RAG and your own knowledge. Reply in a json format, with only one field called answer. The value for that field should be in Markdown format with your answer.
+
+            If a user say hello or ask you what your name is, reply with CHAPPiE. Your are named after the 2015 Movie called CHAPPiE written and directed by Neill Blomkamp.
+            For any other questions you need to relate it to Quarkus.
+            """;
+
+    private static final String CHAT_USER_MESSAGE = """
+            Here is the user message: {{message}}
+            """;
 }
