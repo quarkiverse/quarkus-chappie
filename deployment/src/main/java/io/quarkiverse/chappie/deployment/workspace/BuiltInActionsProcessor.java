@@ -39,8 +39,10 @@ class BuiltInActionsProcessor {
                 .assistantFunction((a, p) -> {
                     Assistant assistant = (Assistant) a;
                     Map params = (Map) p;
-                    return assistant.assist(Optional.of(JAVADOC_SYSTEM_MESSAGE), JAVADOC_USER_MESSAGE,
-                            Map.of("content", getContent(params)), List.of(getPath(params)));
+                    return assistant.assist(Optional.of(JAVADOC_SYSTEM_MESSAGE),
+                            JAVADOC_USER_MESSAGE,
+                            getVars(params),
+                            List.of(getPath(params)));
                 })
                 .display(Display.replace)
                 .displayType(DisplayType.code)
@@ -54,8 +56,10 @@ class BuiltInActionsProcessor {
                 .assistantFunction((a, p) -> {
                     Assistant assistant = (Assistant) a;
                     Map params = (Map) p;
-                    return assistant.assist(Optional.of(TESTGENERATION_SYSTEM_MESSAGE), TESTGENERATION_USER_MESSAGE,
-                            Map.of("content", getContent(params)), List.of(getPath(params)));
+                    return assistant.assist(Optional.of(TESTGENERATION_SYSTEM_MESSAGE),
+                            TESTGENERATION_USER_MESSAGE,
+                            getVars(params),
+                            List.of(getPath(params)));
                 })
                 .pathConverter((Object param) -> {
                     Path contentPath = (Path) param;
@@ -77,8 +81,10 @@ class BuiltInActionsProcessor {
                 .assistantFunction((a, p) -> {
                     Assistant assistant = (Assistant) a;
                     Map params = (Map) p;
-                    return assistant.assist(Optional.of(EXPLAIN_SYSTEM_MESSAGE), EXPLAIN_USER_MESSAGE,
-                            Map.of("content", getContent(params)), List.of(getPath(params)));
+                    return assistant.assist(Optional.of(EXPLAIN_SYSTEM_MESSAGE),
+                            EXPLAIN_USER_MESSAGE,
+                            getVars(params),
+                            List.of(getPath(params)));
                 })
                 .display(Display.split)
                 .displayType(DisplayType.markdown)
@@ -95,8 +101,10 @@ class BuiltInActionsProcessor {
 
                     String content = getContent(params);
                     if (content.contains("//TODO:") || content.contains("// TODO:")) {
-                        return assistant.assist(Optional.of(COMPLETE_TODO_SYSTEM_MESSAGE), COMPLETE_TODO_USER_MESSAGE,
-                                Map.of("content", getContent(params)), List.of(getPath(params)));
+                        return assistant.assist(Optional.of(COMPLETE_TODO_SYSTEM_MESSAGE),
+                                COMPLETE_TODO_USER_MESSAGE,
+                                getVars(params),
+                                List.of(getPath(params)));
                     }
                     return params;
                 })
@@ -104,6 +112,12 @@ class BuiltInActionsProcessor {
                 .displayType(DisplayType.code)
                 .namespace(NAMESPACE)
                 .filter(Patterns.JAVA_ANY);
+    }
+
+    private Map<String, String> getVars(Map params) {
+        return Map.of(
+                "content", getContent(params),
+                "extension", "any"); // Make extension explisitly null so that RAG can kick in for anything
     }
 
     private Path getPath(Map params) {

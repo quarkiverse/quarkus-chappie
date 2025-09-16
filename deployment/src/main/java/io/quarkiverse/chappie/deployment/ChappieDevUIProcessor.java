@@ -9,6 +9,7 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
+import io.quarkus.devui.spi.page.MenuPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
 import io.quarkus.devui.spi.page.PageBuilder;
 import io.quarkus.devui.spi.page.SettingPageBuildItem;
@@ -29,6 +30,18 @@ class ChappieDevUIProcessor {
         assistantSettingTab.setHeadlessComponentLink("qwc-chappie-init.js");
 
         settingPageProducer.produce(assistantSettingTab);
+    }
+
+    @BuildStep
+    void chatPage(BuildProducer<MenuPageBuildItem> menuPageProducer) {
+        MenuPageBuildItem chatPage = new MenuPageBuildItem();
+
+        chatPage.addPage(Page.assistantPageBuilder()
+                .title("Chat")
+                .icon("font-awesome-solid:comment-dots")
+                .componentLink("qwc-chappie-chat.js"));
+
+        menuPageProducer.produce(chatPage);
     }
 
     @BuildStep

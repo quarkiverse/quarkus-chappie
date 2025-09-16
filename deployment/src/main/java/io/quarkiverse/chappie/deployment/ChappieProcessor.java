@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -14,6 +15,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.SubmissionPublisher;
 
 import org.jboss.logging.Logger;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.yaml.snakeyaml.Yaml;
 
 import io.quarkiverse.chappie.runtime.dev.ChappieAssistant;
@@ -21,6 +24,7 @@ import io.quarkiverse.chappie.runtime.dev.ChappieRecorder;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.assistant.deployment.spi.AssistantConsoleBuildItem;
 import io.quarkus.assistant.runtime.dev.Assistant;
+import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -28,10 +32,15 @@ import io.quarkus.deployment.annotations.BuildSteps;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
+import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
+import io.quarkus.deployment.builditem.DockerStatusBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
+import io.quarkus.deployment.builditem.LaunchModeBuildItem;
 import io.quarkus.deployment.console.ConsoleCommand;
 import io.quarkus.deployment.console.ConsoleInstalledBuildItem;
 import io.quarkus.deployment.console.ConsoleStateManager;
+import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
+import io.quarkus.deployment.util.ArtifactInfoUtil;
 import io.quarkus.dev.console.DevConsoleManager;
 import io.quarkus.devui.spi.buildtime.FooterLogBuildItem;
 import io.quarkus.runtime.RuntimeValue;
@@ -42,6 +51,7 @@ import io.vertx.core.Vertx;
 public class ChappieProcessor {
     private static final Logger LOG = Logger.getLogger(ChappieProcessor.class);
     private static final String FEATURE = "assistant";
+    private static volatile DevServicesResultBuildItem.RunningDevService devService;
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
 
     static volatile ChappieAssistant assistant = new ChappieAssistant();
@@ -51,11 +61,14 @@ public class ChappieProcessor {
     void createBeans(BuildProducer<FooterLogBuildItem> footerLogProducer,
             ChappieRecorder recorder,
             BeanContainerBuildItem beanContainer,
-            ExtensionVersionBuildItem extensionVersionBuildItem) {
+            ExtensionVersionBuildItem extensionVersionBuildItem,
+            ChappieRAGBuildItem chappieRAGBuildItem,
+            CurateOutcomeBuildItem curateOutcomeBuildItem) {
 
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion());
+                extensionVersionBuildItem.getVersion(),
+                chappieRAGBuildItem.getProperties());
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
@@ -64,6 +77,20 @@ public class ChappieProcessor {
             }
             assistant.setBaseUrl(baseUrl);
             return true;
+        });
+
+        DevConsoleManager.register("chappie.getArtifact", (t) -> {
+
+            Class callerClass = toClass(t.get("caller"));
+
+            if (callerClass != null) {
+                Map.Entry<String, String> groupIdAndArtifactId = ArtifactInfoUtil.groupIdAndArtifactId(callerClass,
+                        curateOutcomeBuildItem);
+
+                return groupIdAndArtifactId.getKey() + ":" + cleanArtifactId(groupIdAndArtifactId.getValue());
+            } else {
+                return null;
+            }
         });
 
         DevConsoleManager.setGlobal(DevConsoleManager.DEV_MANAGER_GLOBALS_ASSISTANT, assistant);
@@ -171,6 +198,83 @@ public class ChappieProcessor {
         return new FeatureBuildItem(FEATURE);
     }
 
+    @BuildStep
+    public void startPgvectorDevService(BuildProducer<ChappieRAGBuildItem> chappieRAGProducer,
+            BuildProducer<DevServicesResultBuildItem> devServicesResultProducer,
+            LaunchModeBuildItem launchMode,
+            DockerStatusBuildItem dockerStatus,
+            ChappieConfig cfg) {
+
+        if (launchMode.getLaunchMode().isDevOrTest()
+                && cfg.augmenting().enabled()
+                && dockerStatus.isContainerRuntimeAvailable()) {
+
+            String version = Version.getVersion();
+
+            stop();
+
+            if (version.equalsIgnoreCase("999-SNAPSHOT"))
+                version = "latest";
+
+            PostgreSQLContainer<?> container = start(version);
+
+            Map<String, String> props = new HashMap<>();
+            props.put("quarkus.datasource.chappie.db-kind", "postgresql");
+            props.put("quarkus.datasource.chappie.jdbc.url", container.getJdbcUrl());
+            props.put("quarkus.datasource.chappie.username", container.getUsername());
+            props.put("quarkus.datasource.chappie.password", container.getPassword());
+            props.put("quarkus.datasource.chappie.active", "false");
+
+            devService = new DevServicesResultBuildItem.RunningDevService(
+                    "Assistant_Store",
+                    container.getContainerId(),
+                    container::close,
+                    props);
+
+            chappieRAGProducer.produce(new ChappieRAGBuildItem(props));
+            devServicesResultProducer.produce(devService.toBuildItem());
+        }
+    }
+
+    private PostgreSQLContainer<?> start(String version) {
+        try {
+            String image = getImage(version);
+
+            DockerImageName img = DockerImageName.parse(image)
+                    .asCompatibleSubstituteFor("postgres");
+
+            PostgreSQLContainer<?> container = new PostgreSQLContainer<>(img)
+                    .withDatabaseName("postgres")
+                    .withUsername("postgres")
+                    .withPassword("postgres");
+
+            container.start();
+            LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", image, container.getJdbcUrl());
+            return container;
+
+        } catch (Throwable t) {
+            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s. Falling back to latest version",
+                    version);
+            return start("latest");
+        }
+    }
+
+    private void stop() {
+        if (devService != null) {
+            try {
+                devService.close();
+            } catch (Throwable t) {
+                LOG.debug("Failed to stop Chappie pgvector Dev Service cleanly", t);
+            } finally {
+                devService = null;
+            }
+        }
+    }
+
+    private String getImage(String version) {
+        return "ghcr.io/quarkusio/chappie-ingestion-quarkus:" + version;
+    }
+
     private void printResponse(CompletionStage response, Vertx vertx, long timer) {
         response.thenAccept((output) -> {
             vertx.cancelTimer(timer);
@@ -188,6 +292,31 @@ public class ChappieProcessor {
         });
     }
 
+    private Class toClass(String name) {
+        try {
+            return Class.forName(name);
+        } catch (ClassNotFoundException ex) {
+            return null;
+        }
+    }
+
+    private String cleanArtifactId(String artifactId) {
+        if (artifactId.endsWith(DASH_DEV)) {
+            artifactId = artifactId.substring(0, artifactId.lastIndexOf(DASH_DEV));
+        } else if (artifactId.endsWith(DASH_DEPLOYMENT)) {
+            artifactId = artifactId.substring(0, artifactId.lastIndexOf(DASH_DEPLOYMENT));
+        } else if (artifactId.endsWith(DASH_DEPLOYMENT_SPI)) {
+            artifactId = artifactId.substring(0, artifactId.lastIndexOf(DASH_DEPLOYMENT_SPI));
+        } else if (artifactId.endsWith(DASH_SPI)) {
+            artifactId = artifactId.substring(0, artifactId.lastIndexOf(DASH_SPI));
+        }
+        return artifactId;
+    }
+
+    private static final String DASH_DEV = "-dev";
+    private static final String DASH_DEPLOYMENT = "-deployment";
+    private static final String DASH_DEPLOYMENT_SPI = "-deployment-spi";
+    private static final String DASH_SPI = "-spi";
     private static final String YAML_FILE = "/META-INF/quarkus-extension.yaml";
     private static final String GROUP_ID = "io.quarkiverse.chappie";
     private static final String ARTIFACT_ID = "quarkus-chappie";

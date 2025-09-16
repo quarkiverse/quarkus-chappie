@@ -4,6 +4,7 @@ import '@qomponent/qui-code-block';
 import '@vaadin/combo-box';
 import { comboBoxRenderer } from '@vaadin/combo-box/lit.js';
 import '@vaadin/avatar';
+import '@vaadin/checkbox';
 import '@vaadin/form-layout';
 import '@vaadin/password-field';
 import '@vaadin/text-field';
@@ -100,35 +101,54 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     constructor() { 
         super();
         this._navigateBack = null;
+        this._ragDefaults = {
+            ragMaxResults: "4",
+            ragEnabled: "true"
+        };
+        
+        this._storeDefaults = {
+            storeMaxMessages: "30"
+        };
+        
         this._allProviders = [
             {
                 name: "OpenAI", 
                 description: "Leading AI company that builds advanced language models like ChatGPT to power intelligent applications.", 
-                defaultModel: "gpt-4o-mini",
+                defaultModel: "gpt-5-mini",
+                defaultTemperature: "1",
+                defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             }, 
             {
                 name:"Ollama", 
                 description: "A platform for running and managing large language models locally with ease.",
                 defaultModel: "codellama",
+                defaultTemperature: "0.0",
+                defaultTimeout: "PT120S",
                 defaultBaseUrl: "http://localhost:11434/"
             },
             {
                 name:"Podman AI", 
                 description: "Integrates AI features into container workflows, enabling local, secure, and containerized AI model deployment.",
                 defaultModel: "llama3:instruct",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             },
             {
                 name: "OpenShift AI", 
                 description: "Red Hat’s enterprise AI platform, supporting OpenAI-compatible models with secure, scalable deployments.",
                 defaultModel: "",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             },
             {
                 name: "Generic OpenAI-Compatible", 
                 description: "Connect any OpenAI-compatible endpoint by providing your own base URL and API key.",
                 defaultModel: "llama3:instruct",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             }
         ];
@@ -252,7 +272,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             return this._renderOpenShiftAI();
         } else if(this._selectedProvider.name === "Generic OpenAI-Compatible"){
             return this._renderGeneric();
-        }
+        }   
     }
     
     _renderOpenAI(){
@@ -260,22 +280,14 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             <div class="subText">
                 To use OpenAI you need to provide an <a href="https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key" target="_blank">OpenAI Api Key</a>
             </div>
-
-            <vaadin-password-field 
-                id="openai-api-key" 
-                label="Api Key" 
-                placeholder="sk-...." 
-                .value="${this._loadedConfiguration?.apiKey ?? ''}"
-                required>
-            </vaadin-password-field>
-
-            <vaadin-text-field 
-                id="openai-model" 
-                label="Model" 
-                placeholder="${this._selectedProvider.defaultModel}"
-                .value="${this._loadedConfiguration?.model ?? ''}">
-            </vaadin-text-field>
-
+            
+            ${this._renderApiKeyInput('openai', true, "sk-....")}
+            ${this._renderModelInput('openai')}
+            ${this._renderTemperatureInput('openai')}
+            ${this._renderTimeoutInput('openai')}
+            ${this._renderRagSettings()}
+            ${this._renderStoreSettings()}
+            
             <vaadin-button 
                 theme="primary" 
                 @click="${this._saveOpenAIConfig}">
@@ -290,21 +302,13 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 To use Ollama you need to install and run ollama. See <a href="https://ollama.com/download" target="_blank">ollama.com/download</a>
             </div>
 
-            <vaadin-text-field 
-                id="podman-base-url" 
-                label="Base URL" 
-                placeholder="${this._selectedProvider.defaultBaseUrl}"
-                .value="${this._loadedConfiguration?.baseUrl ?? ''}"
-                required>
-            </vaadin-text-field>
-
-            <vaadin-text-field 
-                id="ollama-model" 
-                label="Model" 
-                placeholder="${this._selectedProvider.defaultModel}"
-                .value="${this._loadedConfiguration?.model ?? ''}">
-            </vaadin-text-field>
-
+            ${this._renderBaseUrlInput('ollama', true)}
+            ${this._renderModelInput('ollama')}
+            ${this._renderTemperatureInput('ollama')}
+            ${this._renderTimeoutInput('ollama')}
+            ${this._renderRagSettings()}
+            ${this._renderStoreSettings()}
+            
             <vaadin-button 
                 theme="primary" 
                 @click="${this._saveOllamaConfig}">
@@ -320,21 +324,13 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 You also need to install the Podman AI Lab extension. See <a href="https://podman-desktop.io/docs/ai-lab/installing" target="_blank">podman-desktop.io/docs/ai-lab/installing</a>
             </div>
 
-            <vaadin-text-field 
-                id="podman-base-url" 
-                label="Base URL" 
-                placeholder="http://localhost...."
-                .value="${this._loadedConfiguration?.baseUrl ?? ''}"
-                required>
-            </vaadin-text-field>
-
-            <vaadin-text-field 
-                id="podman-model" 
-                label="Model" 
-                placeholder="${this._selectedProvider.defaultModel}"
-                .value="${this._loadedConfiguration?.model ?? ''}">
-            </vaadin-text-field>
-
+            ${this._renderBaseUrlInput('podman', true)}
+            ${this._renderModelInput('podman')}
+            ${this._renderTemperatureInput('podman')}
+            ${this._renderTimeoutInput('podman')}
+            ${this._renderRagSettings()}
+            ${this._renderStoreSettings()}
+            
             <vaadin-button 
                 theme="primary" 
                 @click="${this._savePodmanAIConfig}">
@@ -349,27 +345,14 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 See <a href="https://www.redhat.com/en/products/ai/openshift-ai" target="_blank">redhat.com/en/products/ai/openshift-ai</a>
             </div>
 
-            <vaadin-text-field 
-                id="openshift-base-url" 
-                label="Base URL" 
-                placeholder="https://..."
-                .value="${this._loadedConfiguration?.baseUrl ?? ''}"
-                required>
-            </vaadin-text-field>
-
-            <vaadin-password-field 
-                id="openshift-api-key" 
-                label="API Key"
-                .value="${this._loadedConfiguration?.apiKey ?? ''}">
-            </vaadin-password-field>
-
-            <vaadin-text-field 
-                id="openshift-model" 
-                label="Model"
-                .value="${this._loadedConfiguration?.model ?? ''}"
-                required>
-            </vaadin-text-field>
-
+            ${this._renderBaseUrlInput('openshift', true)}
+            ${this._renderApiKeyInput('openshift')}
+            ${this._renderModelInput('openshift', true)}
+            ${this._renderTemperatureInput('openshift')}
+            ${this._renderTimeoutInput('openshift')}
+            ${this._renderRagSettings()}
+            ${this._renderStoreSettings()}
+            
             <vaadin-button 
                 theme="primary" 
                 @click="${this._saveOpenShiftAIConfig}">
@@ -380,33 +363,112 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     
     _renderGeneric(){
         return html`
-            <vaadin-text-field 
-                id="generic-base-url" 
-                label="Base URL" 
-                placeholder="https://your-ai-endpoint.com/v1"
-                .value="${this._loadedConfiguration?.baseUrl ?? ''}"
-                required>
-            </vaadin-text-field>
-
-            <vaadin-password-field 
-                id="generic-api-key"
-                .value="${this._loadedConfiguration?.apiKey ?? ''}"
-                label="API Key">
-            </vaadin-password-field>
-
-            <vaadin-text-field 
-                id="generic-model" 
-                .value="${this._loadedConfiguration?.model ?? ''}"
-                label="Model"
-                required>
-            </vaadin-text-field>
-
+        
+            ${this._renderBaseUrlInput('generic', true)}
+            ${this._renderApiKeyInput('generic')}
+            ${this._renderModelInput('generic', true)}
+            ${this._renderTemperatureInput('generic')}
+            ${this._renderTimeoutInput('generic')}
+            ${this._renderRagSettings()}
+            ${this._renderStoreSettings()}
+            
             <vaadin-button 
                 theme="primary" 
                 @click="${this._saveGenericConfig}">
                 Save
             </vaadin-button>
         `;
+    }
+    
+    _renderApiKeyInput(backend, required = false, placeholder = '') {
+        return html`<vaadin-password-field 
+                id="${backend}-api-key"
+                .value="${this._loadedConfiguration?.apiKey ?? ''}"
+                placeholder="${placeholder}"
+                label="API Key"
+                ?required=${required}>
+            </vaadin-password-field>`;
+    }
+    
+    _renderBaseUrlInput(backend, required = false){
+        return html`<vaadin-text-field 
+                id="${backend}-base-url" 
+                label="Base URL" 
+                placeholder="${this._selectedProvider.defaultBaseUrl}"
+                .value="${this._loadedConfiguration?.baseUrl ?? ''}"
+                ?required=${required}>
+            </vaadin-text-field>`;
+    }
+    
+    _renderModelInput(backend, required = false){
+        return html`<vaadin-text-field 
+                id="${backend}-model" 
+                label="Model" 
+                placeholder="${this._selectedProvider.defaultModel}"
+                .value="${this._loadedConfiguration?.model ?? ''}"
+                ?required=${required}>
+            </vaadin-text-field>`;
+    }
+    
+    _renderTemperatureInput(backend){
+        return html`<vaadin-number-field 
+                id="${backend}-temperature"
+                label="Temperature" 
+                placeholder="${this._selectedProvider.defaultTemperature}"
+                .value="${this._loadedConfiguration?.temperature ?? ''}"
+                min="0"
+                step="0.1">
+        
+            </vaadin-number-field>`;
+    }
+    
+    _renderTimeoutInput(backend){
+        return html`<vaadin-text-field 
+                id="${backend}-timeout" 
+                label="Timeout" 
+                placeholder="${this._selectedProvider.defaultTimeout}"
+                .value="${this._loadedConfiguration?.timeout ?? ''}">
+            </vaadin-text-field>`;
+    }
+    
+    _renderRagSettings(){
+        
+        let c = this._asBool(this._loadedConfiguration?.ragEnabled ?? this._ragDefaults?.ragEnabled);
+        
+        console.log(c);
+        
+        return html`
+            
+            <vaadin-checkbox
+                id="rag-enabled"
+                .checked=${c}
+                label="Enable RAG">
+            </vaadin-checkbox>
+        
+            <vaadin-number-field
+                id="rag-max-results" 
+                label="Max RAG results" 
+                placeholder="${this._ragDefaults.ragMaxResults}"
+                .value="${this._loadedConfiguration?.ragMaxResults ?? ''}"
+                min="1"
+                step="1">
+            </vaadin-number-field>`;
+    }
+    
+    _renderStoreSettings(){
+        return html`<vaadin-text-field 
+                id="store-max-messages" 
+                label="Max store messages" 
+                placeholder="${this._storeDefaults.storeMaxMessages}"
+                .value="${this._loadedConfiguration?.storeMaxMessages ?? ''}">
+            </vaadin-text-field>`;
+    }
+    
+    _asBool(v) {
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'string') return v.trim().toLowerCase() === 'true' || v === '1';
+        if (typeof v === 'number') return v !== 0;
+        return false;
     }
     
     _providerComboRenderer(provider){
@@ -436,18 +498,64 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         }
     }
     
+    _getRagEnabled() {
+        const el = this.renderRoot?.querySelector('#rag-enabled');
+        const enabled = el?.checked ?? (this._loadedConfiguration?.ragEnabled ?? this._ragDefaults?.ragEnabled ?? false);
+        return enabled ? 'true' : 'false';
+    }
+    
+    _getRagMaxResultsInput(){
+        let ragMaxResults = this.shadowRoot.querySelector('#rag-max-results')?.value;
+        if(!ragMaxResults)ragMaxResults = this._ragDefaults.ragMaxResults;
+        return ragMaxResults;
+    }
+    
+    _getStoreMaxMessagesInput(){
+        let storeMaxMessages = this.shadowRoot.querySelector('#store-max-messages')?.value;
+        if(!storeMaxMessages)storeMaxMessages = this._storeDefaults.storeMaxMessages;
+        return storeMaxMessages;
+    }
+    
+    _getModelInput(selector){
+        let model = this.shadowRoot.querySelector(selector)?.value;
+        if(!model)model = this._selectedProvider.defaultModel;
+        return model;
+    }
+    
+    _getTemperatureInput(selector){
+        let temperature = this.shadowRoot.querySelector(selector)?.value;
+        if(!temperature)temperature = this._selectedProvider.defaultTemperature;
+        return temperature;
+    }
+    
+    _getTimeoutInput(selector){
+        let timeout = this.shadowRoot.querySelector(selector)?.value;
+        if(!timeout)timeout = this._selectedProvider.defaultTimeout;
+        return timeout;
+    }
+    
+    _getBaseUrlInput(selector){
+        let baseUrl = this.shadowRoot.querySelector(selector)?.value;
+        if(!baseUrl)baseUrl = this._selectedProvider.defaultBaseUrl;
+        return baseUrl;
+    }
+    
+    _getApiKeyInput(selector){
+        return this.shadowRoot.querySelector(selector)?.value;
+    }
+    
     _saveOpenAIConfig() {
-        let apiKey = this.shadowRoot.querySelector('#openai-api-key')?.value;
-        let model = this.shadowRoot.querySelector('#openai-model')?.value;
-
+        let apiKey = this._getApiKeyInput('#openai-api-key');
         if(apiKey){
-        
-            if(!model)model = this._selectedProvider.defaultModel;
-
             this._storeConfiguration({
                 name: this._selectedProvider.name,
                 apiKey,
-                model
+                model: this._getModelInput('#openai-model'),
+                temperature: this._getTemperatureInput('#openai-temperature'),
+                timeout: this._getTimeoutInput('#openai-timeout'),
+                ragMaxResults: this._getRagMaxResultsInput(),
+                ragEnabled: this._getRagEnabled(),
+                storeMaxMessages: this._getStoreMaxMessagesInput()
             });
         }else{
             notifier.showErrorMessage("You need to provide an API Key");
@@ -455,33 +563,32 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _saveOllamaConfig(){
-        let baseUrl = this.shadowRoot.querySelector('#podman-base-url')?.value;
-        let model = this.shadowRoot.querySelector('#ollama-model')?.value;
-        
-        if(!model)model = this._selectedProvider.defaultModel;
-        if(!baseUrl)baseUrl = this._selectedProvider.defaultBaseUrl;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            baseUrl,
-            model
+            baseUrl: this._getBaseUrlInput('#ollama-base-url'),
+            model: this._getModelInput('#ollama-model'),
+            temperature: this._getTemperatureInput('#ollama-temperature'),
+            timeout: this._getTimeoutInput('#ollama-timeout'),
+            ragMaxResults: this._getRagMaxResultsInput(),
+            ragEnabled: this._getRagEnabled(),
+            storeMaxMessages: this._getStoreMaxMessagesInput()
         });
-        
-        
     }
     
     _savePodmanAIConfig() {
         let baseUrl = this.shadowRoot.querySelector('#podman-base-url')?.value;
-        let model = this.shadowRoot.querySelector('#podman-model')?.value;
         
         if(baseUrl){
-            if(!model)model = this._selectedProvider.defaultModel;
-        
             this._storeConfiguration({
                 name: this._selectedProvider.name,
                 apiKey: "sk-dummy",
-                baseUrl,
-                model
+                baseUrl: this._getBaseUrlInput('#podman-base-url'),
+                model: this._getModelInput('#podman-model'),
+                temperature: this._getTemperatureInput('#podman-temperature'),
+                timeout: this._getTimeoutInput('#podman-timeout'),
+                ragMaxResults: this._getRagMaxResultsInput(),
+                ragEnabled: this._getRagEnabled(),
+                storeMaxMessages: this._getStoreMaxMessagesInput()
             });
         }else{
             notifier.showErrorMessage("You need to provide a base URL");
@@ -489,28 +596,30 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _saveOpenShiftAIConfig() {
-        let baseUrl = this.shadowRoot.querySelector('#openshift-base-url')?.value;
-        let apiKey = this.shadowRoot.querySelector('#openshift-api-key')?.value;
-        let model = this.shadowRoot.querySelector('#openshift-model')?.value;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            baseUrl,
-            apiKey,
-            model
+            baseUrl: this._getBaseUrlInput('#openshift-base-url'),
+            apiKey: this._getApiKeyInput('#openshift-api-key'),
+            model: this._getModelInput('#openshift-model'),
+            temperature: this._getTemperatureInput('#openshift-temperature'),
+            timeout: this._getTimeoutInput('#openshift-timeout'),
+            ragMaxResults: this._getRagMaxResultsInput(),
+            ragEnabled: this._getRagEnabled(),
+            storeMaxMessages: this._getStoreMaxMessagesInput()
         });
     }
 
     _saveGenericConfig() {
-        let baseUrl = this.shadowRoot.querySelector('#generic-base-url')?.value;
-        let apiKey = this.shadowRoot.querySelector('#generic-api-key')?.value;
-        let model = this.shadowRoot.querySelector('#generic-model')?.value;
-
         this._storeConfiguration({
             name: this._selectedProvider.name,
-            baseUrl,
-            apiKey,
-            model
+            baseUrl: this._getBaseUrlInput('#generic-base-url'),
+            apiKey: this._getApiKeyInput('#generic-api-key'),
+            model: this._getModelInput('#generic-model'),
+            temperature: this._getTemperatureInput('#generic-temperature'),
+            timeout: this._getTimeoutInput('#generic-timeout'),
+            ragMaxResults: this._getRagMaxResultsInput(),
+            ragEnabled: this._getRagEnabled(),
+            storeMaxMessages: this._getStoreMaxMessagesInput()
         });
     }
     
