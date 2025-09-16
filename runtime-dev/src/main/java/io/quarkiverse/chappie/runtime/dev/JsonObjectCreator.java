@@ -18,7 +18,7 @@ public class JsonObjectCreator {
 
     static {
         commonInputNode = objectMapper.createObjectNode();
-        commonInputNode.put("programmingLanguage", "Java / Kotlin"); // TODO: Find a clean way to decide if this is Kotlin or Java
+        commonInputNode.put("programmingLanguage", "Java"); // TODO: Find a clean way to decide if this is Kotlin or Java
         commonInputNode.put("programmingLanguageVersion", System.getProperty("java.version"));
         commonInputNode.put("quarkusVersion", Version.getVersion());
     }

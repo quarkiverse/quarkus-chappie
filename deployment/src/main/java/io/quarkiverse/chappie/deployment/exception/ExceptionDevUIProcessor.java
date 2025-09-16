@@ -84,54 +84,67 @@ class ExceptionDevUIProcessor {
         BuildTimeActionBuildItem buildItemActions = new BuildTimeActionBuildItem();
 
         // This gets the last know exception. For initial load.
-        buildItemActions.addAction("getLastException", ignored -> {
-            LastException lastException = lastExceptionBuildItem.getLastException().get();
-            if (lastException != null) {
-                return lastException;
-            }
-            return null;
-        });
+        buildItemActions.actionBuilder()
+                .methodName("getLastException")
+                .description("Gets the last known exception that happend")
+                .function(ignored -> {
+                    LastException lastException = lastExceptionBuildItem.getLastException().get();
+                    if (lastException != null) {
+                        return lastException;
+                    }
+                    return null;
+                })
+                .build();
 
         // This streams exceptions as they happen
-        buildItemActions.addSubscription("streamException", ignored -> {
-            return broadcastsBuildItem.getLastExceptionPublisher();
-        });
+        buildItemActions.subscriptionBuilder()
+                .methodName("streamException")
+                .function(ignored -> {
+                    return broadcastsBuildItem.getLastExceptionPublisher();
+                })
+                .build();
 
         // This suggest fix based on exception and code
-        buildItemActions.addAssistantAction("suggestFix", (a, ignored) -> {
-            Assistant assistant = (Assistant) a;
-            LastException lastException = lastExceptionBuildItem.getLastException().get();
-            if (lastException != null) {
-                Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
-                        workspaceBuildItem.getPaths());
-                if (sourcePath != null) {
-                    String stacktraceString = lastException.getStackTraceString();
-                    CompletionStage<ExceptionOutput> response = assistant.exceptionBuilder()
-                            .userMessage("The stacktrace is a Java exception")
-                            .stacktrace(stacktraceString)
-                            .path(sourcePath)
-                            .explain();
-                    response.thenAccept((suggestedFix) -> {
-                        lastSolutionBuildItem.getLastSolution().set(suggestedFix);
-                        lastSolutionBuildItem.getPath().set(sourcePath);
-                    });
-                    return response;
-                } // TODO: We can still attempt this if we could not find a relevant file
-            }
-            return null;
-        });
+        buildItemActions.actionBuilder()
+                .methodName("suggestFix")
+                .assistantFunction((a, ignored) -> {
+                    Assistant assistant = (Assistant) a;
+                    LastException lastException = lastExceptionBuildItem.getLastException().get();
+                    if (lastException != null) {
+                        Path sourcePath = DecorateStackUtil.findAffectedPath(lastException.stackTraceElement().getClassName(),
+                                workspaceBuildItem.getPaths());
+                        if (sourcePath != null) {
+                            String stacktraceString = lastException.getStackTraceString();
+                            CompletionStage<ExceptionOutput> response = assistant.exceptionBuilder()
+                                    .userMessage("The stacktrace is a Java exception")
+                                    .stacktrace(stacktraceString)
+                                    .path(sourcePath)
+                                    .explain();
+                            response.thenAccept((suggestedFix) -> {
+                                lastSolutionBuildItem.getLastSolution().set(suggestedFix);
+                                lastSolutionBuildItem.getPath().set(sourcePath);
+                            });
+                            return response;
+                        } // TODO: We can still attempt this if we could not find a relevant file
+                    }
+                    return null;
+                })
+                .build();
 
         // This suggest fix based on exception and code
-        buildItemActions.addAction("applyFix", code -> {
-            ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
-            Path path = lastSolutionBuildItem.getPath().get();
-            if (exceptionOutput != null && path != null) {
-                lastSolutionBuildItem.getLastSolution().set(null);
-                lastSolutionBuildItem.getPath().set(null);
-                return ContentIO.writeContent(path, exceptionOutput.manipulatedContent());
-            }
-            return null;
-        });
+        buildItemActions.actionBuilder()
+                .methodName("applyFix")
+                .function(code -> {
+                    ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
+                    Path path = lastSolutionBuildItem.getPath().get();
+                    if (exceptionOutput != null && path != null) {
+                        lastSolutionBuildItem.getLastSolution().set(null);
+                        lastSolutionBuildItem.getPath().set(null);
+                        return ContentIO.writeContent(path, exceptionOutput.manipulatedContent());
+                    }
+                    return null;
+                })
+                .build();
 
         buildTimeActionProducer.produce(buildItemActions);
 
@@ -158,7 +171,6 @@ class ExceptionDevUIProcessor {
                             .stacktrace(stacktraceString)
                             .path(sourcePath)
                             .explain()
-
                             .thenApply((Object output) -> {
                                 ExceptionOutput exceptionOutput = (ExceptionOutput) output;
 
