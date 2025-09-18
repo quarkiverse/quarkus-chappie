@@ -11,7 +11,7 @@ extension to you project, example in maven:
 <dependency>
     <groupId>io.quarkiverse.chappie</groupId>
     <artifactId>quarkus-chappie</artifactId>
-    <version>1.1.0</version> <!-- Or latest -->
+    <version>1.3.0</version> <!-- Or latest -->
 </dependency>
 ```
 
