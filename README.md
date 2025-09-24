@@ -11,7 +11,7 @@ extension to you project, example in maven:
 <dependency>
     <groupId>io.quarkiverse.chappie</groupId>
     <artifactId>quarkus-chappie</artifactId>
-    <version>1.1.0</version> <!-- Or latest -->
+    <version>1.4.0</version> <!-- Or latest -->
 </dependency>
 ```
 
@@ -50,3 +50,13 @@ mvn quarkus:dev
 ```
 
 Configure the provider in Dev UI, and then navigate to localhost:8080 and simulate some exceptions to get to the exception screen.
+
+# Doing work on the Chappie server.
+
+You can make changes to the Chappie server and test this with this extension.
+
+1) Clone https://github.com/chappie-bot/chappie-server
+2) Build the chappie server with `mvn clean install -Dquarkus.profile=chappie`
+3) Change this chappie-extension to use chappie server version 999-SNAPSHOT 
+   In https://github.com/quarkiverse/quarkus-chappie/blob/main/runtime-dev/pom.xml, change `chappie-server.version` to `999-SNAPSHOT` 
+4) Everytime you make a change in the server, you need to rebuild the extension to pull in the new version.

@@ -45,10 +45,13 @@ import io.quarkus.dev.console.DevConsoleManager;
 import io.quarkus.devui.spi.buildtime.FooterLogBuildItem;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.util.ClassPathUtils;
+import io.quarkus.vertx.http.deployment.NonApplicationRootPathBuildItem;
 import io.vertx.core.Vertx;
 
 @BuildSteps(onlyIf = IsLocalDevelopment.class)
 public class ChappieProcessor {
+    private static final String DEVMCP = "dev-mcp";
+
     private static final Logger LOG = Logger.getLogger(ChappieProcessor.class);
     private static final String FEATURE = "assistant";
     private static volatile DevServicesResultBuildItem.RunningDevService devService;
@@ -63,12 +66,16 @@ public class ChappieProcessor {
             BeanContainerBuildItem beanContainer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
             ChappieRAGBuildItem chappieRAGBuildItem,
-            CurateOutcomeBuildItem curateOutcomeBuildItem) {
+            CurateOutcomeBuildItem curateOutcomeBuildItem,
+            NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
+
+        String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
                 extensionVersionBuildItem.getVersion(),
-                chappieRAGBuildItem.getProperties());
+                chappieRAGBuildItem.getProperties(),
+                devmcpPath);
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;

@@ -9,6 +9,7 @@ import '@vaadin/form-layout';
 import '@vaadin/password-field';
 import '@vaadin/text-field';
 import '@vaadin/number-field';
+import '@vaadin/details';
 import { notifier } from 'notifier';
 import { RouterController } from 'router-controller';
 import { assistantState } from 'assistant-state';
@@ -88,6 +89,30 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         .unlistedLink:hover {
             filter: brightness(150%);
         }
+    
+        .fullWidth {
+            width: 100%;
+        }
+    
+        .rag{
+            display: flex;
+            align-items: baseline;
+            gap: 25px;
+        }
+        .storage {
+            display: flex;
+            align-items: baseline;
+            gap: 25px;
+        }
+        .mcp{
+            
+        }
+    
+        .tt {
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
+        }
     `;
     
     static properties = {
@@ -104,6 +129,10 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         this._ragDefaults = {
             ragMaxResults: "4",
             ragEnabled: "true"
+        };
+        
+        this._mcpDefaults = {
+            mcpEnabled: "true"
         };
         
         this._storeDefaults = {
@@ -282,11 +311,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </div>
             
             ${this._renderApiKeyInput('openai', true, "sk-....")}
-            ${this._renderModelInput('openai')}
-            ${this._renderTemperatureInput('openai')}
-            ${this._renderTimeoutInput('openai')}
-            ${this._renderRagSettings()}
-            ${this._renderStoreSettings()}
+            ${this._renderModelTemperatureAndTimeoutInput('openai')}
+            ${this._renderCommonSettings()}
             
             <vaadin-button 
                 theme="primary" 
@@ -303,11 +329,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </div>
 
             ${this._renderBaseUrlInput('ollama', true)}
-            ${this._renderModelInput('ollama')}
-            ${this._renderTemperatureInput('ollama')}
-            ${this._renderTimeoutInput('ollama')}
-            ${this._renderRagSettings()}
-            ${this._renderStoreSettings()}
+            ${this._renderModelTemperatureAndTimeoutInput('ollama')}
+            ${this._renderCommonSettings()}
             
             <vaadin-button 
                 theme="primary" 
@@ -325,12 +348,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </div>
 
             ${this._renderBaseUrlInput('podman', true)}
-            ${this._renderModelInput('podman')}
-            ${this._renderTemperatureInput('podman')}
-            ${this._renderTimeoutInput('podman')}
-            ${this._renderRagSettings()}
-            ${this._renderStoreSettings()}
-            
+            ${this._renderModelTemperatureAndTimeoutInput('podman')}
+            ${this._renderCommonSettings()}
+                        
             <vaadin-button 
                 theme="primary" 
                 @click="${this._savePodmanAIConfig}">
@@ -347,11 +367,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
 
             ${this._renderBaseUrlInput('openshift', true)}
             ${this._renderApiKeyInput('openshift')}
-            ${this._renderModelInput('openshift', true)}
-            ${this._renderTemperatureInput('openshift')}
-            ${this._renderTimeoutInput('openshift')}
-            ${this._renderRagSettings()}
-            ${this._renderStoreSettings()}
+            ${this._renderModelTemperatureAndTimeoutInput('openshift', true)}
+            ${this._renderCommonSettings()}
             
             <vaadin-button 
                 theme="primary" 
@@ -366,11 +383,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         
             ${this._renderBaseUrlInput('generic', true)}
             ${this._renderApiKeyInput('generic')}
-            ${this._renderModelInput('generic', true)}
-            ${this._renderTemperatureInput('generic')}
-            ${this._renderTimeoutInput('generic')}
-            ${this._renderRagSettings()}
-            ${this._renderStoreSettings()}
+            ${this._renderModelTemperatureAndTimeoutInput('generic', true)}
+            ${this._renderCommonSettings()}
             
             <vaadin-button 
                 theme="primary" 
@@ -378,6 +392,25 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 Save
             </vaadin-button>
         `;
+    }
+    
+    _renderCommonSettings(){
+        return html`<vaadin-details summary="RAG">
+                        <div class="rag">
+                            ${this._renderRagSettings()}
+                        </div>
+                    </vaadin-details>
+                    <vaadin-details summary="Storage">
+                        <div class="storage">
+                            ${this._renderStoreSettings()}
+                        </div>
+                    </vaadin-details>
+                    <vaadin-details summary="MCP">
+                        <div class="mcp">
+                            ${this._renderMCPSettings()}
+                        </div>
+                    </vaadin-details>
+                    `;
     }
     
     _renderApiKeyInput(backend, required = false, placeholder = '') {
@@ -400,8 +433,16 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </vaadin-text-field>`;
     }
     
+    _renderModelTemperatureAndTimeoutInput(backend, required = false){
+        return html`<div class="tt">
+                        ${this._renderModelInput(backend, required)}
+                        ${this._renderTemperatureInput(backend)}
+                        ${this._renderTimeoutInput(backend)}
+                    </div>`;
+    }
+    
     _renderModelInput(backend, required = false){
-        return html`<vaadin-text-field 
+        return html`<vaadin-text-field class="fullWidth"
                 id="${backend}-model" 
                 label="Model" 
                 placeholder="${this._selectedProvider.defaultModel}"
@@ -411,7 +452,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _renderTemperatureInput(backend){
-        return html`<vaadin-number-field 
+        return html`<vaadin-number-field class="fullWidth" 
                 id="${backend}-temperature"
                 label="Temperature" 
                 placeholder="${this._selectedProvider.defaultTemperature}"
@@ -423,7 +464,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _renderTimeoutInput(backend){
-        return html`<vaadin-text-field 
+        return html`<vaadin-text-field class="fullWidth"
                 id="${backend}-timeout" 
                 label="Timeout" 
                 placeholder="${this._selectedProvider.defaultTimeout}"
@@ -434,8 +475,6 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     _renderRagSettings(){
         
         let c = this._asBool(this._loadedConfiguration?.ragEnabled ?? this._ragDefaults?.ragEnabled);
-        
-        console.log(c);
         
         return html`
             
@@ -461,6 +500,25 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 label="Max store messages" 
                 placeholder="${this._storeDefaults.storeMaxMessages}"
                 .value="${this._loadedConfiguration?.storeMaxMessages ?? ''}">
+            </vaadin-text-field>`;
+    }
+    
+    _renderMCPSettings(){
+        
+        let c = this._asBool(this._loadedConfiguration?.mcpEnabled ?? this._mcpDefaults?.mcpEnabled);
+        
+        return html`
+            <vaadin-checkbox
+                id="mcp-enabled"
+                .checked=${c}
+                label="Enable MCP (By default, if available, Dev MCP will be added)">
+            </vaadin-checkbox>
+
+            <vaadin-text-field class="fullWidth"
+                id="extra-mcp-servers" 
+                label="More MCP Servers" 
+                placeholder="http://localhost:3001/mcp, https://my-mcp.example.com/mcp, stdio:npm exec @modelcontextprotocol/server-everything"
+                .value="${this._loadedConfiguration?.mcpservers ?? ''}">
             </vaadin-text-field>`;
     }
     
@@ -516,6 +574,18 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         return storeMaxMessages;
     }
     
+    _getMcpEnabled() {
+        const el = this.renderRoot?.querySelector('#mcp-enabled');
+        const enabled = el?.checked ?? (this._loadedConfiguration?.mcpEnabled ?? this._mcpDefaults?.mcpEnabled ?? false);
+        return enabled ? 'true' : 'false';
+    }
+    
+    _getExtraMcpServersInput(){
+        let storeExtraMcpServer = this.shadowRoot.querySelector('#extra-mcp-servers')?.value;
+        if(!storeExtraMcpServer)storeExtraMcpServer = '';
+        return storeExtraMcpServer;
+    }
+    
     _getModelInput(selector){
         let model = this.shadowRoot.querySelector(selector)?.value;
         if(!model)model = this._selectedProvider.defaultModel;
@@ -555,7 +625,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 timeout: this._getTimeoutInput('#openai-timeout'),
                 ragMaxResults: this._getRagMaxResultsInput(),
                 ragEnabled: this._getRagEnabled(),
-                storeMaxMessages: this._getStoreMaxMessagesInput()
+                storeMaxMessages: this._getStoreMaxMessagesInput(),
+                mcpEnabled: this._getMcpEnabled(),
+                mcpExtraServers: this._getExtraMcpServersInput()
             });
         }else{
             notifier.showErrorMessage("You need to provide an API Key");
@@ -571,7 +643,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             timeout: this._getTimeoutInput('#ollama-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
             ragEnabled: this._getRagEnabled(),
-            storeMaxMessages: this._getStoreMaxMessagesInput()
+            storeMaxMessages: this._getStoreMaxMessagesInput(),
+            mcpEnabled: this._getMcpEnabled(),
+            mcpExtraServers: this._getExtraMcpServersInput()
         });
     }
     
@@ -588,7 +662,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 timeout: this._getTimeoutInput('#podman-timeout'),
                 ragMaxResults: this._getRagMaxResultsInput(),
                 ragEnabled: this._getRagEnabled(),
-                storeMaxMessages: this._getStoreMaxMessagesInput()
+                storeMaxMessages: this._getStoreMaxMessagesInput(),
+                mcpEnabled: this._getMcpEnabled(),
+                mcpExtraServers: this._getExtraMcpServersInput()
             });
         }else{
             notifier.showErrorMessage("You need to provide a base URL");
@@ -605,7 +681,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             timeout: this._getTimeoutInput('#openshift-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
             ragEnabled: this._getRagEnabled(),
-            storeMaxMessages: this._getStoreMaxMessagesInput()
+            storeMaxMessages: this._getStoreMaxMessagesInput(),
+            mcpEnabled: this._getMcpEnabled(),
+            mcpExtraServers: this._getExtraMcpServersInput()
         });
     }
 
@@ -619,7 +697,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             timeout: this._getTimeoutInput('#generic-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
             ragEnabled: this._getRagEnabled(),
-            storeMaxMessages: this._getStoreMaxMessagesInput()
+            storeMaxMessages: this._getStoreMaxMessagesInput(),
+            mcpEnabled: this._getMcpEnabled(),
+            mcpExtraServers: this._getExtraMcpServersInput()
         });
     }
     
