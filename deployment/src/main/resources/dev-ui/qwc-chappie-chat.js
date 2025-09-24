@@ -100,7 +100,9 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     hotReload(){
-        
+        document.body.style.cursor = 'default';
+        this._inputIsBlocked = false;
+        // TODO: Re connect with the same memoryId
     }
     
     render() { 
@@ -178,6 +180,11 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             document.body.style.cursor = 'default';
             this._removeLastMessage();
             this._addAssistantMessage(jsonRpcResponse.result.answer);
+            
+            if(jsonRpcResponse.result.confirm){
+                this._addToolMessage(jsonRpcResponse.result.confirm + " (tool: " + jsonRpcResponse.result.action + ")");
+            }
+            
             this._inputIsBlocked = false;
         });
     }
@@ -199,6 +206,10 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     
     _addAssistantMessage(message){
         this._addToMessages(message, "Assistant", 5);
+    }
+    
+    _addToolMessage(message){
+        this._addToMessages(message, "MCP Tool", 4);
     }
     
     _addToMessages(message, user, userColorIndex){
