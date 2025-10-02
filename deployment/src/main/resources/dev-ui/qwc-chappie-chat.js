@@ -60,9 +60,23 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             padding-right: 76px;
             color: var(--quarkus-blue);
         }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: larger;
+            background: var(--lumo-contrast-5pct);
+        }
+    
+        .headerText {
+            padding-left: 5px;
+        }
+    
     `;
     
     static properties = {
+        _heading: { state: true },
         _messages: { state: true },
         _inputIsBlocked: { state: true }
     };
@@ -72,6 +86,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         this._messages = [];
         this._inputIsBlocked = false;
         this._menuItems = [];
+        this._heading = null;
     }
 
     connectedCallback() {
@@ -80,8 +95,14 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             {
                 key: 'new-chat',
                 component: this._createMenuItem('font-awesome-regular:pen-to-square', 'New chat')
+            },
+            {
+                key: 'chat-history',
+                component: this._createMenuItem('font-awesome-solid:clock-rotate-left', 'History')
             }
           ];
+          
+        this._getCurrentMessages();
     }
     
     disconnectedCallback() {
@@ -102,7 +123,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     hotReload(){
         document.body.style.cursor = 'default';
         this._inputIsBlocked = false;
-        // TODO: Re connect with the same memoryId
+        this._getCurrentMessages();
     }
     
     render() { 
@@ -120,7 +141,10 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     _renderExistingChat(){
         return html`<div class="inputExisting">
                         <div class="inputExistingWithMenu">
-                            <vaadin-menu-bar theme="small icon end-aligned" .items="${this._menuItems}" @item-selected="${this._menuItemSelected}"></vaadin-menu-bar>
+                            <div class="header">
+                                <span class="headerText">${this._heading}</span>
+                                <vaadin-menu-bar theme="small icon end-aligned" .items="${this._menuItems}" @item-selected="${this._menuItemSelected}"></vaadin-menu-bar>
+                            </div>
                             <div class="inputExistingList">
                                 <vaadin-message-list .items="${this._messages}" markdown></vaadin-message-list>
                             </div>
@@ -158,13 +182,59 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             case 'new-chat':
                 this._startNewChat();
                 break;
+            case 'chat-history':
+                this._showChatHistory();
+                break;
         }
+    }
+    
+    _getCurrentMessages(){
+        this._messages = [];
+        document.body.style.cursor = 'progress'; 
+        this.jsonRpc.mostRecentChat().then(jsonRpcResponse => {
+            console.log(JSON.stringify(jsonRpcResponse));
+            let r = jsonRpcResponse?.result;
+            if(r){
+                let name = r.summary?.memoryId;
+                if(r.summary?.niceName){
+                    name = r.summary?.niceName;
+                }
+                console.log(name);
+                
+                if(r.messages){
+                    let messages = r.messages;
+                    for (const m of messages) {
+                        console.log('type:', m.type);
+                        
+                        if(m.type === 'USER'){
+                           this._addUserMessage(m.contents[0].text);
+                        }else if(m.type === 'AI'){
+                            const t = m.text?.trim();
+                            if(t){
+                                const obj = JSON.parse(t);
+                                this._addAssistantMessage(obj?.answer ?? t);
+                            }
+                        }
+                    }
+                }   
+            }
+            document.body.style.cursor = 'default';
+        });
+        
     }
     
     _startNewChat(){
         document.body.style.cursor = 'progress'; 
         this.jsonRpc.clearMemory().then(jsonRpcResponse => {
             this._messages = [];
+            document.body.style.cursor = 'default'; 
+        });
+    }
+    
+    _showChatHistory(){
+        document.body.style.cursor = 'progress'; 
+        this.jsonRpc.chats().then(jsonRpcResponse => {
+            console.log(JSON.stringify(jsonRpcResponse));
             document.body.style.cursor = 'default'; 
         });
     }
@@ -179,6 +249,11 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         this.jsonRpc.chat({message:m}).then(jsonRpcResponse => {
             document.body.style.cursor = 'default';
             this._removeLastMessage();
+            
+            if(jsonRpcResponse.result.nice_name){
+                this._heading = jsonRpcResponse.result.nice_name;
+            }
+            
             this._addAssistantMessage(jsonRpcResponse.result.answer);
             
             if(jsonRpcResponse.result.confirm){

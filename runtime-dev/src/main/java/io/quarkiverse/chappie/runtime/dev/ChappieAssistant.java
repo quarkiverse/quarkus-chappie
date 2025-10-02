@@ -21,7 +21,7 @@ import io.quarkus.dev.console.DevConsoleManager;
 public class ChappieAssistant implements Assistant {
 
     private String baseUrl = null;
-    private String memoryId = null;
+    private volatile String memoryId = null;
 
     @Override
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
@@ -38,7 +38,7 @@ public class ChappieAssistant implements Assistant {
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     enhancedVariables, paths);
 
-            return (CompletionStage<T>) send("assist", jsonPayload, Map.class);
+            return (CompletionStage<T>) post("assist", jsonPayload, Map.class);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -52,12 +52,46 @@ public class ChappieAssistant implements Assistant {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage, Map.of(),
                     Map.of("stacktrace", stacktrace, "path", path.toString()));
-            return (CompletionStage<T>) send("exception", jsonPayload, ExceptionOutput.class);
+            return (CompletionStage<T>) post("exception", jsonPayload, ExceptionOutput.class);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             return failedFuture;
         }
+    }
+
+    @Deprecated
+    public CompletionStage<List<Map>> getMessages(String memoryId) {
+        if (!isAvailable()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
+        }
+        HttpRequest.Builder b = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/store/messages/" + memoryId))
+                .header("Accept", "application/json");
+
+        return getArray(b.GET().build());
+    }
+
+    public CompletionStage<List<Map>> getChats() {
+        if (!isAvailable()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
+        }
+        HttpRequest.Builder b = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/store/chats"))
+                .header("Accept", "application/json");
+
+        return getArray(b.GET().build());
+    }
+
+    public CompletionStage<Map> getMostRecentChat() {
+        if (!isAvailable()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
+        }
+        HttpRequest.Builder b = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/store/most-recent"))
+                .header("Accept", "application/json");
+
+        return getObject(b.GET().build());
     }
 
     @Override
@@ -77,11 +111,15 @@ public class ChappieAssistant implements Assistant {
         this.memoryId = null;
     }
 
-    private <T> CompletionStage<T> send(String method, String jsonPayload, Class<T> responseType) {
-        return send(createHttpRequest(method, jsonPayload), responseType);
+    public String getMemoryId() {
+        return this.memoryId;
     }
 
-    private <T> CompletionStage<T> send(HttpRequest request, Class<T> responseType) {
+    private <T> CompletionStage<T> post(String method, String jsonPayload, Class<T> responseType) {
+        return post(createHttpRequest(method, jsonPayload), responseType);
+    }
+
+    private <T> CompletionStage<T> post(HttpRequest request, Class<T> responseType) {
         HttpClient client = HttpClient.newHttpClient();
 
         return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -100,6 +138,48 @@ public class ChappieAssistant implements Assistant {
                         CompletableFuture<T> failedFuture = new CompletableFuture<>();
                         failedFuture.completeExceptionally(new RuntimeException("Failed: HTTP error code : " + status));
                         return failedFuture;
+                    }
+                });
+    }
+
+    private CompletionStage<Map> getObject(HttpRequest request) {
+        HttpClient client = HttpClient.newHttpClient();
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    int status = response.statusCode();
+                    if (status == 200) {
+                        String body = response.body();
+                        try {
+                            return JsonObjectCreator.getMap(response.body());
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to parse messages JSON", e);
+                        }
+                    } else if (status == 204) {
+                        return Map.of();
+                    } else {
+                        throw new RuntimeException("Failed: HTTP error code : " + status);
+                    }
+                });
+    }
+
+    private CompletionStage<List<Map>> getArray(HttpRequest request) {
+        HttpClient client = HttpClient.newHttpClient();
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    int status = response.statusCode();
+                    if (status == 200) {
+                        String body = response.body();
+                        try {
+                            return JsonObjectCreator.getList(response.body());
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to parse messages JSON", e);
+                        }
+                    } else if (status == 204) {
+                        return List.of();
+                    } else {
+                        throw new RuntimeException("Failed: HTTP error code : " + status);
                     }
                 });
     }

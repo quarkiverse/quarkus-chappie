@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -53,6 +54,24 @@ public class JsonObjectCreator {
     public static <T> T getOutput(String json, Class<T> responseType) {
         try {
             return objectMapper.readValue(json, responseType);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON response \n" + json, e);
+        }
+    }
+
+    public static List<Map> getList(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Map>>() {
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON response \n" + json, e);
+        }
+    }
+
+    public static Map getMap(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map>() {
+            });
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse JSON response \n" + json, e);
         }

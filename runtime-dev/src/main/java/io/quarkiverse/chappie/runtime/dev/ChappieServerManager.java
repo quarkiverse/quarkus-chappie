@@ -134,6 +134,13 @@ public class ChappieServerManager {
         return false;
     }
 
+    public String getMemoryId() {
+        if (isConfigured()) {
+            return this.assistant.getMemoryId();
+        }
+        return null;
+    }
+
     private boolean isInstalled() {
         if (version.endsWith("SNAPSHOT"))
             return false; // Always reinstal snapshot
@@ -184,6 +191,14 @@ public class ChappieServerManager {
 
     public Properties loadConfiguration() {
         return load(null);
+    }
+
+    public CompletionStage<Map> mostRecentChat() {
+        return this.assistant.getMostRecentChat();
+    }
+
+    public CompletionStage<List<Map>> chats() {
+        return this.assistant.getChats();
     }
 
     public CompletionStage<Map> chat(String message) {
@@ -444,6 +459,11 @@ public class ChappieServerManager {
                 properties.put("chappie.rag.results.max", ragMaxResults);
             }
 
+            String ragMinScore = providerProperties.getProperty("ragMinScore");
+            if (ragMinScore != null && !ragMinScore.isBlank()) {
+                properties.put("chappie.rag.score.min", ragMinScore);
+            }
+
             String storeMaxMessages = providerProperties.getProperty("storeMaxMessages");
             if (storeMaxMessages != null && !storeMaxMessages.isBlank()) {
                 properties.put("chappie.store.messages.max", storeMaxMessages);
@@ -582,6 +602,6 @@ public class ChappieServerManager {
             """;
 
     private static final String CHAT_USER_MESSAGE = """
-            Here is the user message: {{message}}
+            {{message}}
             """;
 }

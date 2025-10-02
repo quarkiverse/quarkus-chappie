@@ -128,6 +128,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         this._navigateBack = null;
         this._ragDefaults = {
             ragMaxResults: "4",
+            ragMinScore: "0.82",
             ragEnabled: "true"
         };
         
@@ -486,12 +487,22 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         
             <vaadin-number-field
                 id="rag-max-results" 
-                label="Max RAG results" 
+                label="Max results" 
                 placeholder="${this._ragDefaults.ragMaxResults}"
                 .value="${this._loadedConfiguration?.ragMaxResults ?? ''}"
                 min="1"
                 step="1">
-            </vaadin-number-field>`;
+            </vaadin-number-field>
+
+            <vaadin-number-field
+                id="rag-min-score" 
+                label="Min score" 
+                placeholder="${this._ragDefaults.ragMinScore}"
+                .value="${this._loadedConfiguration?.ragMinScore ?? ''}"
+                min="0"
+                step="0.01">
+            </vaadin-number-field>
+            `;
     }
     
     _renderStoreSettings(){
@@ -568,6 +579,12 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         return ragMaxResults;
     }
     
+    _getRagMinScoreInput(){
+        let ragMinScore = this.shadowRoot.querySelector('#rag-min-score')?.value;
+        if(!ragMinScore)ragMinScore = this._ragDefaults.ragMinScore;
+        return ragMinScore;
+    }
+    
     _getStoreMaxMessagesInput(){
         let storeMaxMessages = this.shadowRoot.querySelector('#store-max-messages')?.value;
         if(!storeMaxMessages)storeMaxMessages = this._storeDefaults.storeMaxMessages;
@@ -624,6 +641,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 temperature: this._getTemperatureInput('#openai-temperature'),
                 timeout: this._getTimeoutInput('#openai-timeout'),
                 ragMaxResults: this._getRagMaxResultsInput(),
+                ragMinScore: this._getRagMinScoreInput(),
                 ragEnabled: this._getRagEnabled(),
                 storeMaxMessages: this._getStoreMaxMessagesInput(),
                 mcpEnabled: this._getMcpEnabled(),
@@ -642,6 +660,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             temperature: this._getTemperatureInput('#ollama-temperature'),
             timeout: this._getTimeoutInput('#ollama-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
+            ragMinScore: this._getRagMinScoreInput(),
             ragEnabled: this._getRagEnabled(),
             storeMaxMessages: this._getStoreMaxMessagesInput(),
             mcpEnabled: this._getMcpEnabled(),
@@ -661,6 +680,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 temperature: this._getTemperatureInput('#podman-temperature'),
                 timeout: this._getTimeoutInput('#podman-timeout'),
                 ragMaxResults: this._getRagMaxResultsInput(),
+                ragMinScore: this._getRagMinScoreInput(),
                 ragEnabled: this._getRagEnabled(),
                 storeMaxMessages: this._getStoreMaxMessagesInput(),
                 mcpEnabled: this._getMcpEnabled(),
@@ -680,6 +700,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             temperature: this._getTemperatureInput('#openshift-temperature'),
             timeout: this._getTimeoutInput('#openshift-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
+            ragMinScore: this._getRagMinScoreInput(),
             ragEnabled: this._getRagEnabled(),
             storeMaxMessages: this._getStoreMaxMessagesInput(),
             mcpEnabled: this._getMcpEnabled(),
@@ -696,6 +717,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             temperature: this._getTemperatureInput('#generic-temperature'),
             timeout: this._getTimeoutInput('#generic-timeout'),
             ragMaxResults: this._getRagMaxResultsInput(),
+            ragMinScore: this._getRagMinScoreInput(),
             ragEnabled: this._getRagEnabled(),
             storeMaxMessages: this._getStoreMaxMessagesInput(),
             mcpEnabled: this._getMcpEnabled(),
