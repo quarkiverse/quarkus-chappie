@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
@@ -24,6 +25,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,13 +36,11 @@ import org.jboss.logging.Logger;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
 import io.quarkus.dev.console.DevConsoleManager;
-import io.quarkus.logging.Log;
 import io.quarkus.runtime.util.ClassPathUtils;
 
 @ApplicationScoped
 public class ChappieServerManager {
     private static final Logger LOG = Logger.getLogger(ChappieServerManager.class);
-    private static Process process;
     private final SubmissionPublisher<String> logPublisher = new SubmissionPublisher<>();
     private ScheduledExecutorService logExecutor;
     private volatile boolean logStreaming = false;
@@ -48,6 +49,22 @@ public class ChappieServerManager {
     private ChappieAssistant assistant;
     private String version;
     private Map<String, String> chappieRAGProperties;
+
+    private static Supplier<ProcessHandle> getCurrentProcess;
+    private static Consumer<ProcessHandle> setCurrentProcess;
+
+    public static void registerProcessHandler(Supplier<ProcessHandle> getter, Consumer<ProcessHandle> setter) {
+        getCurrentProcess = getter;
+        setCurrentProcess = setter;
+    }
+
+    public static ProcessHandle getProcess() {
+        return getCurrentProcess.get();
+    }
+
+    public static void setProcess(ProcessHandle process) {
+        setCurrentProcess.accept(process);
+    }
 
     public SubmissionPublisher<String> init(String version, ChappieAssistant assistant,
             Map<String, String> chappieRAGProperties) {
@@ -250,18 +267,29 @@ public class ChappieServerManager {
     }
 
     public boolean isRunning() {
+        ProcessHandle process = getProcess();
         return process != null && process.isAlive();
     }
 
     private Map<String, String> start() {
+        Map<String, String> chappieServerArguments = getChappieServerArguments();
         if (isRunning()) {
-            // TODO: Check if the configuration changed
+            Map<String, String> arguments = getCurrentProcessArguments();
+            if (containsSameKeyValue(arguments, chappieServerArguments)) {
+                LOG.debug("Chappie Server is already running with the same configuration");
+                String chappieServerBase = "http://" + chappieServerArguments.get(SERVER_PROPERTY_KEY_HOST) + ":"
+                        + chappieServerArguments.get(SERVER_PROPERTY_KEY_PORT);
+
+                setAssistantBaseUrl(chappieServerBase);
+                return arguments;
+            } else {
+                LOG.debug("Chappie Server is already running with a different configuration, restarting...");
+            }
             stop();
         }
 
         try {
             Path chappieServer = getChappieServer(this.version);
-            Map<String, String> chappieServerArguments = getChappieServerArguments();
 
             List<String> command = new ArrayList<>();
             command.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
@@ -272,14 +300,15 @@ public class ChappieServerManager {
             command.add("-jar");
             command.add(chappieServer.toString());
 
-            Log.debug("Starting Chappie Server with command: " + String.join(" ", command));
+            LOG.debug("Starting Chappie Server with command: " + String.join(" ", command));
             ProcessBuilder processBuilder = new ProcessBuilder(command)
                     .redirectOutput(logFile.toFile())
                     .redirectErrorStream(true);
 
-            process = processBuilder.start();
+            ProcessHandle handle = processBuilder.start().toHandle();
+            setProcess(handle);
 
-            chappieServerArguments.put("processId", String.valueOf(process.pid()));
+            chappieServerArguments.put("processId", String.valueOf(handle.pid()));
 
             String chappieServerBase = "http://" + chappieServerArguments.get(SERVER_PROPERTY_KEY_HOST) + ":"
                     + chappieServerArguments.get(SERVER_PROPERTY_KEY_PORT);
@@ -294,17 +323,42 @@ public class ChappieServerManager {
         }
     }
 
-    public long stop() {
-        if (isRunning()) {
-            long pid = process.pid();
-            process.destroyForcibly();
+    private static boolean containsSameKeyValue(Map<String, String> args, Map<String, String> otherArgs) {
+        if (args == null || otherArgs == null) {
+            return false;
+        }
+        if (args.size() != otherArgs.size()) {
+            return false;
+        }
+        return args.entrySet().stream()
+                .allMatch(e -> Objects.equals(otherArgs.get(e.getKey()), e.getValue()));
+    }
 
+    private Map<String, String> getCurrentProcessArguments() {
+        if (isRunning()) {
+            Optional<String[]> arguments = getProcess().info().arguments();
+            if (arguments.isPresent()) {
+                String[] args = arguments.get();
+                Map<String, String> currentArgs = new HashMap<>();
+                for (String a : args) {
+                    if (a.startsWith("-D")) {
+                        String[] keyValue = a.substring(2).split("=", 2);
+                        if (keyValue.length == 2) {
+                            currentArgs.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                return currentArgs;
+            }
+        }
+        return Map.of();
+    }
+
+    public void stop() {
+        if (isRunning()) {
             setAssistantBaseUrl(null);
             stopStreamingLog();
-
-            return pid;
         }
-        return -1L;
     }
 
     private void startStreamingLog() {
@@ -320,7 +374,9 @@ public class ChappieServerManager {
                 }
             } catch (Exception e) {
                 logPublisher.closeExceptionally(e);
-                logExecutor.shutdownNow();
+                if (logExecutor != null && !logExecutor.isShutdown()) {
+                    logExecutor.shutdownNow();
+                }
             } finally {
                 //publisher.close();
             }
@@ -332,7 +388,9 @@ public class ChappieServerManager {
         if (logTask != null) {
             logTask.cancel(true);
         }
-        logExecutor.shutdownNow();
+        if (logExecutor != null && !logExecutor.isShutdown()) {
+            logExecutor.shutdownNow();
+        }
         //publisher.close();
     }
 
