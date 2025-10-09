@@ -21,24 +21,41 @@ import io.quarkus.dev.console.DevConsoleManager;
 public class ChappieAssistant implements Assistant {
 
     private String baseUrl = null;
-    private volatile String memoryId = null;
+    private String memoryId = null;
+    private String title = null;
+
+    @Override
+    public boolean isAvailable() {
+        return this.baseUrl != null;
+    }
 
     @Override
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
             String userMessageTemplate,
-            Map<String, String> variables, List<Path> paths) {
+            Map<String, String> variables, List<Path> paths, Class<?> responseType) {
+        return assist(systemMessageTemplate, userMessageTemplate, variables, paths, responseType, true, true);
+    }
+
+    public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
+            String userMessageTemplate,
+            Map<String, String> variables, List<Path> paths, Class<?> responseType, boolean unwrap, boolean forceNewSession) {
 
         Map<String, String> enhancedVariables = new HashMap<>(variables);
         String extension = getExtension();
+
         if (extension != null && !variables.containsKey("extension")) {
             enhancedVariables.put("extension", extension);
         }
 
+        if (forceNewSession) {
+            this.clearMemory();
+        }
+
         try {
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
-                    enhancedVariables, paths);
+                    enhancedVariables, paths, responseType);
 
-            return (CompletionStage<T>) post("assist", jsonPayload, Map.class);
+            return (CompletionStage<T>) sendToChappieServer("assist", jsonPayload, responseType, unwrap);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -46,57 +63,73 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
+    // TODO: This should be replaced with assist
     @Override
     public <T> CompletionStage<T> exception(Optional<String> systemMessage, String userMessage,
             String stacktrace, Path path) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage, Map.of(),
-                    Map.of("stacktrace", stacktrace, "path", path.toString()));
-            return (CompletionStage<T>) post("exception", jsonPayload, ExceptionOutput.class);
+                    Map.of("stacktrace", stacktrace, "path", path.toString()), null);
+            return (CompletionStage<T>) sendToChappieServer("exception", jsonPayload, ExceptionOutput.class, true);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             return failedFuture;
         }
-    }
-
-    @Deprecated
-    public CompletionStage<List<Map>> getMessages(String memoryId) {
-        if (!isAvailable()) {
-            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
-        }
-        HttpRequest.Builder b = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/store/messages/" + memoryId))
-                .header("Accept", "application/json");
-
-        return getArray(b.GET().build());
     }
 
     public CompletionStage<List<Map>> getChats() {
         if (!isAvailable()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
         }
-        HttpRequest.Builder b = HttpRequest.newBuilder()
+        HttpRequest r = HttpRequest.newBuilder().GET()
                 .uri(URI.create(baseUrl + "/api/store/chats"))
-                .header("Accept", "application/json");
+                .header("Accept", "application/json")
+                .build();
 
-        return getArray(b.GET().build());
+        return getArray(r);
     }
 
-    public CompletionStage<Map> getMostRecentChat() {
+    public CompletionStage<Map> getMostRecentChatMessages() {
         if (!isAvailable()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
         }
-        HttpRequest.Builder b = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/store/most-recent"))
-                .header("Accept", "application/json");
+        if (this.memoryId != null && !this.memoryId.isBlank()) {
+            return getChatMessages(this.memoryId);
+        } else {
+            HttpRequest r = HttpRequest.newBuilder().GET()
+                    .uri(URI.create(baseUrl + "/api/store/most-recent"))
+                    .header("Accept", "application/json")
+                    .build();
 
-        return getObject(b.GET().build());
+            return getObject(r);
+        }
     }
 
-    @Override
-    public boolean isAvailable() {
-        return this.baseUrl != null;
+    public CompletionStage<Map> getChatMessages(String memoryId) {
+        this.memoryId = memoryId;
+
+        if (!isAvailable()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
+        }
+        HttpRequest r = HttpRequest.newBuilder().GET()
+                .uri(URI.create(baseUrl + "/api/store/messages/" + memoryId))
+                .header("Accept", "application/json")
+                .build();
+
+        return getObject(r);
+    }
+
+    public void deleteChat(String memoryId) {
+        if (isAvailable()) {
+            HttpRequest r = HttpRequest.newBuilder().DELETE()
+                    .uri(URI.create(baseUrl + "/api/store/messages/" + memoryId))
+                    .header("Accept", "application/json")
+                    .build();
+
+            HttpClient client = HttpClient.newHttpClient();
+            client.sendAsync(r, HttpResponse.BodyHandlers.ofString());
+        }
     }
 
     public String getBaseUrl() {
@@ -107,19 +140,25 @@ public class ChappieAssistant implements Assistant {
         this.baseUrl = baseUrl;
     }
 
-    public void clearMemoryId() {
+    public void clearMemory() {
         this.memoryId = null;
+        this.title = null;
     }
 
     public String getMemoryId() {
         return this.memoryId;
     }
 
-    private <T> CompletionStage<T> post(String method, String jsonPayload, Class<T> responseType) {
-        return post(createHttpRequest(method, jsonPayload), responseType);
+    public String getTitle() {
+        return this.title;
     }
 
-    private <T> CompletionStage<T> post(HttpRequest request, Class<T> responseType) {
+    private <T> CompletionStage<T> sendToChappieServer(String method, String jsonPayload, Class<T> responseType,
+            boolean unwrap) {
+        return doRequest(createHttpRequest(method, jsonPayload), responseType, unwrap);
+    }
+
+    private <T> CompletionStage<T> doRequest(HttpRequest request, Class<T> responseType, boolean unwrap) {
         HttpClient client = HttpClient.newHttpClient();
 
         return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -127,17 +166,32 @@ public class ChappieAssistant implements Assistant {
                     int status = response.statusCode();
                     if (status == 200) {
                         Optional<String> posibleMemoryId = response.headers().firstValue(HEADER_MEMORY_ID);
-                        if (posibleMemoryId.isPresent())
+                        if (posibleMemoryId.isPresent()) {
                             this.memoryId = posibleMemoryId.get();
-                        if (responseType.isInstance(String.class)) { // Handle other Java types
-                            return response.body();
+                        } // TODO: Else ?
+
+                        String body = response.body();
+
+                        ChappieEnvelope envelope = JsonObjectCreator.getEnvelopeOutput(body, responseType);
+
+                        this.title = envelope.niceName();
+
+                        if (unwrap) {
+                            if (responseType.isInstance(String.class)) {
+                                return response.body();
+                            } else {
+                                return envelope.answer();
+                            }
                         } else {
-                            return JsonObjectCreator.getOutput(response.body(), responseType);
+                            return Map.of(this.memoryId, envelope);
                         }
                     } else {
-                        CompletableFuture<T> failedFuture = new CompletableFuture<>();
-                        failedFuture.completeExceptionally(new RuntimeException("Failed: HTTP error code : " + status));
-                        return failedFuture;
+                        // TODO: Can we get more details ?
+                        throw new RuntimeException("Failed with HTTP error code : " + status);
+
+                        //CompletableFuture<T> failedFuture = new CompletableFuture<>();
+                        //failedFuture.completeExceptionally(new RuntimeException());
+                        //return failedFuture;
                     }
                 });
     }

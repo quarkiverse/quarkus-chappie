@@ -13,7 +13,7 @@
     <description>Chappie assistant implementation - Dev mode only</description>
 
     <properties>
-        <chappie-server.version>999-SNAPSHOT</chappie-server.version>
+        <chappie-server.version>1.1.4</chappie-server.version>
     </properties>
 
     <dependencies>
@@ -29,6 +29,17 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-devui-spi</artifactId>
+        </dependency>
+        <!-- To build an expected reponse -->
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <version>4.38.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-module-jackson</artifactId>
+            <version>4.38.0</version>
         </dependency>
     </dependencies>
     

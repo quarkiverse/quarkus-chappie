@@ -2,7 +2,9 @@ package io.quarkiverse.chappie.deployment;
 
 import java.util.List;
 
+import io.quarkiverse.chappie.runtime.dev.ChappieJsonRpcService;
 import io.quarkiverse.chappie.runtime.dev.ChappieServerManager;
+import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.assistant.deployment.spi.AssistantPageBuildItem;
 import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -60,7 +62,15 @@ class ChappieDevUIProcessor {
     }
 
     @BuildStep
+    void additionalBean(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer) {
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
+                .addBeanClass(ChappieServerManager.class)
+                .setUnremovable().build());
+    }
+
+    @BuildStep
     JsonRPCProvidersBuildItem createJsonRPCServiceForCache() {
-        return new JsonRPCProvidersBuildItem(ChappieServerManager.class);
+        return new JsonRPCProvidersBuildItem(ChappieJsonRpcService.class);
     }
 }

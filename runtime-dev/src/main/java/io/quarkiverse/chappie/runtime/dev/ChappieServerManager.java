@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -57,7 +56,7 @@ public class ChappieServerManager {
     private String version;
     private Map<String, String> chappieRAGProperties;
     private String devMcpPath;
-    private boolean mcpIsEnabled = true; // default
+    private boolean mcpEnabled = true; // default
 
     @Inject
     McpServerConfiguration mcpServerConfiguration;
@@ -126,24 +125,13 @@ public class ChappieServerManager {
         }
     }
 
-    public boolean clearMemory() {
-        if (isConfigured()) {
-            this.assistant.clearMemoryId();
-            return true;
-        }
-        return false;
-    }
-
-    public String getMemoryId() {
-        if (isConfigured()) {
-            return this.assistant.getMemoryId();
-        }
-        return null;
+    public ChappieAssistant getChappieAssistant() {
+        return this.assistant;
     }
 
     private boolean isInstalled() {
         if (version.endsWith("SNAPSHOT"))
-            return false; // Always reinstal snapshot
+            return false; // Always re-install snapshot
         Path chappieBase = getChappieBaseDir(version);
         if (Files.exists(chappieBase)) {
             Path chappieServer = getChappieServer(chappieBase);
@@ -152,7 +140,7 @@ public class ChappieServerManager {
         return false;
     }
 
-    public void install(String version) {
+    private void install(String version) {
         try {
             ClassPathUtils.consumeAsStreams("/bin/" + CHAPPIE_SERVER, (InputStream t) -> {
                 try {
@@ -181,41 +169,11 @@ public class ChappieServerManager {
     }
 
     public boolean isConfigured() {
-        Properties properties = this.loadConfiguration();
+        Properties properties = this.loadConfiguration(null);
         return properties.containsKey(KEY_NAME);
     }
 
-    public Properties loadConfigurationFor(String name) {
-        return load(name);
-    }
-
-    public Properties loadConfiguration() {
-        return load(null);
-    }
-
-    public CompletionStage<Map> mostRecentChat() {
-        return this.assistant.getMostRecentChat();
-    }
-
-    public CompletionStage<List<Map>> chats() {
-        return this.assistant.getChats();
-    }
-
-    public CompletionStage<Map> chat(String message) {
-        Map<String, String> vars = new HashMap<>();
-        vars.put("message", message);
-        vars.put("extension", "any");
-
-        String sm = CHAT_SYSTEM_MESSAGE;
-        if (this.mcpIsEnabled) {
-            sm = sm + "\n\n" + CHAT_SYSTEM_MESSAGE_MCP;
-        }
-
-        return this.assistant.assist(Optional.of(sm), CHAT_USER_MESSAGE, vars,
-                List.of());
-    }
-
-    private Properties load(String name) {
+    public Properties loadConfiguration(String name) {
         Properties fullProps = new Properties();
 
         if (Files.exists(configFile)) {
@@ -304,7 +262,7 @@ public class ChappieServerManager {
     }
 
     public String getConfiguredProviderName() {
-        Properties properties = this.loadConfiguration();
+        Properties properties = this.loadConfiguration(null);
         return properties.getProperty(KEY_NAME, null);
     }
 
@@ -428,7 +386,7 @@ public class ChappieServerManager {
     }
 
     private Map<String, String> getChappieServerArguments() {
-        Properties providerProperties = this.loadConfiguration();
+        Properties providerProperties = this.loadConfiguration(null);
         if (providerProperties.containsKey(KEY_NAME)) {
             String provider = providerProperties.getProperty(KEY_NAME);
 
@@ -507,12 +465,12 @@ public class ChappieServerManager {
             // MCP Settings
             String mcpEnabled = providerProperties.getProperty("mcpEnabled");
             if (mcpEnabled != null && !mcpEnabled.isBlank() && mcpEnabled.equalsIgnoreCase("false")) {
-                this.mcpIsEnabled = false;
+                this.mcpEnabled = false;
             } else {
-                this.mcpIsEnabled = true;
+                this.mcpEnabled = true;
             }
 
-            if (this.mcpIsEnabled && mcpServerConfiguration.isEnabled()) {
+            if (this.mcpEnabled && mcpServerConfiguration.isEnabled()) {
 
                 String mcpExtraServers = getDevMCPServerUrl();
 
@@ -536,6 +494,10 @@ public class ChappieServerManager {
     public boolean isOllama(String name) {
         return name != null
                 && (name.equals(OLLAMA));
+    }
+
+    public boolean isMcpEnabled() {
+        return this.mcpEnabled;
     }
 
     private void setAssistantBaseUrl(String baseUrl) {
@@ -572,36 +534,4 @@ public class ChappieServerManager {
     private static final String SERVER_PROPERTY_KEY_HOST = "quarkus.http.host";
     private static final String SERVER_PROPERTY_KEY_PORT = "quarkus.http.port";
 
-    private static final String CHAT_SYSTEM_MESSAGE = """
-            You are assisting a Quarkus developer with their project. The developer will ask a question that you should answer as good as possible, using the provided
-            RAG and your own knowledge. If you don't get a good match in RAG, rather not include it. Reply in a json format, with field called answer. The value for that field should be in Markdown format with your answer.
-
-            If a user say hello or ask you what your name is, reply with an nice introduction sentence. Your name is CHAPPiE, you are named after the 2015 Movie called CHAPPiE written and directed by Neill Blomkamp.
-            If a user asks what can you do or help with, answer that you can help them with their Quarkus questions, and that you have the up-to-date documentation available.
-            If a user just asks a question and nothing about you, you should not add an introduction sentence.
-            For any other questions you need to relate it to Quarkus.
-
-            When suggesting code, never suggest that a user needs to add quarkus-dev-ui in their pom.xml.
-            """;
-
-    private static final String CHAT_SYSTEM_MESSAGE_MCP = """
-            MCP:
-            If MCP Tools is available:
-            - First, answer the user directly and concisely.
-            - If the request is actionable (e.g., set a config, add an extension, edit a file, run a task), propose the exact change and ASK:
-              "Do you want me to apply this now?".
-            - Do NOT execute any tool unless the user explicitly consents (e.g., “yes”, “do it”, “apply”).
-            - After executing a write on a later turn, verify with an appropriate read/list tool and report the result.
-            - Never invent tool names/args; only use tools you actually have.
-            - If you can suggest an action from a tool, include the <tool_name> in a field called action.
-            - If you can suggest an action from a tool, include the confirmation message in a field called confirm.
-            - If the user asks you to do something actionable, just do it (you do not need to ask to confirm in that case)
-            - If a use reply yes (or effectively yes) to a message that contains a suggested action, then do the action.
-            - Before suggesting adding a Quarkus extension, use the MCP tool(devui-extensions_getInstallableExtensions) to see if the extension is installable (so don't suggest that if the extension is already installed).
-            - When doing a config change, use the devui-configuration_updateProperty tool if available. Prefer this over other ways for example devui-workspace_saveWorkspaceItemContent.
-            """;
-
-    private static final String CHAT_USER_MESSAGE = """
-            {{message}}
-            """;
 }
