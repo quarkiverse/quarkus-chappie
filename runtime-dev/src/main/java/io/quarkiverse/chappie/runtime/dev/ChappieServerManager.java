@@ -33,6 +33,7 @@ import org.jboss.logging.Logger;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
 import io.quarkus.dev.console.DevConsoleManager;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.util.ClassPathUtils;
 
 @ApplicationScoped
@@ -271,6 +272,7 @@ public class ChappieServerManager {
             command.add("-jar");
             command.add(chappieServer.toString());
 
+            Log.debug("Starting Chappie Server with command: " + String.join(" ", command));
             ProcessBuilder processBuilder = new ProcessBuilder(command)
                     .redirectOutput(logFile.toFile())
                     .redirectErrorStream(true);

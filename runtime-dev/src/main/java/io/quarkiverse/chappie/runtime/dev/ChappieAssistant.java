@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
 import io.quarkus.dev.console.DevConsoleManager;
+import io.quarkus.logging.Log;
 
 public class ChappieAssistant implements Assistant {
 
@@ -60,6 +61,27 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
+    public <T> CompletionStage<T> searchDocs(String queryMessage, Integer maxResults, String extension) {
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("queryMessage", queryMessage);
+            if (maxResults != null) {
+                params.put("maxResults", maxResults);
+            }
+            if (extension == null) {
+                params.put("extension", extension);
+            }
+            String jsonPayload = JsonObjectCreator.toJsonString(params);
+            Log.info("Search payload: " + jsonPayload);
+            return (CompletionStage<T>) send("search", jsonPayload, Map.class);
+        } catch (Exception ex) {
+            CompletableFuture<T> failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(ex);
+            Log.info("Search Failed ", ex);
+            return failedFuture;
+        }
+    }
+
     @Override
     public boolean isAvailable() {
         return this.baseUrl != null;
@@ -84,17 +106,18 @@ public class ChappieAssistant implements Assistant {
     private <T> CompletionStage<T> send(HttpRequest request, Class<T> responseType) {
         HttpClient client = HttpClient.newHttpClient();
 
-        return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(response -> {
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenCompose(response -> {
                     int status = response.statusCode();
                     if (status == 200) {
                         Optional<String> posibleMemoryId = response.headers().firstValue(HEADER_MEMORY_ID);
                         if (posibleMemoryId.isPresent())
                             this.memoryId = posibleMemoryId.get();
                         if (responseType.isInstance(String.class)) { // Handle other Java types
-                            return response.body();
+                            return CompletableFuture.completedFuture((T) response.body());
                         } else {
-                            return JsonObjectCreator.getOutput(response.body(), responseType);
+                            return CompletableFuture
+                                    .completedFuture(JsonObjectCreator.getOutput(response.body(), responseType));
                         }
                     } else {
                         CompletableFuture<T> failedFuture = new CompletableFuture<>();
