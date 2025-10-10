@@ -15,13 +15,18 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
-        
+        <!-- for devservices -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-devservices</artifactId>
+        </dependency>
+
         <!-- To bind to object -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson</artifactId>
         </dependency>
-        
+
         <!-- TODO: Consider moving the mutiny logger to core ? -->
         <dependency>
             <groupId>io.quarkus</groupId>
