@@ -26,6 +26,21 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-assistant-deployment-spi</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-devui-spi</artifactId>
+        </dependency>
+        <!-- To build an expected reponse -->
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <version>4.38.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-module-jackson</artifactId>
+            <version>4.38.0</version>
+        </dependency>
     </dependencies>
     
     <build>

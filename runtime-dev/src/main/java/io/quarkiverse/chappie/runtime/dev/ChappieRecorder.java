@@ -15,7 +15,9 @@ import io.quarkus.runtime.annotations.Recorder;
 public class ChappieRecorder {
 
     public RuntimeValue<SubmissionPublisher<String>> createChappieServerManager(BeanContainer beanContainer,
-            ChappieAssistant assistant, String chappieServerVersion) {
+            ChappieAssistant assistant,
+            String chappieServerVersion,
+            String devMcpPath) {
         Config config = ConfigProvider.getConfig();
         Map<String, String> chappieRAGProperties = new HashMap<>();
         configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.db-kind");
@@ -25,7 +27,7 @@ public class ChappieRecorder {
         configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.active");
 
         ChappieServerManager chappieServerManager = beanContainer.beanInstance(ChappieServerManager.class);
-        return new RuntimeValue(chappieServerManager.init(chappieServerVersion, assistant, chappieRAGProperties));
+        return new RuntimeValue(chappieServerManager.init(chappieServerVersion, assistant, chappieRAGProperties, devMcpPath));
     }
 
     void configMap(Config config, Map<String, String> map, String key) {

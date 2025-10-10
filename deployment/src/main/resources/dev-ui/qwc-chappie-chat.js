@@ -6,7 +6,12 @@ import 'qwc-no-data';
 import '@vaadin/message-input';
 import '@vaadin/message-list';
 import '@vaadin/progress-bar';
-import '@vaadin/menu-bar';
+import '@vaadin/popover';
+import { popoverRenderer } from '@vaadin/popover/lit.js';
+import './qwc-chappie-chat-history.js';
+import {ring} from 'ldrs';
+
+ring.register();
 
 /**
  * This component allows Assistant Chat
@@ -35,6 +40,11 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             padding-top: 25vh;
         }
     
+        .buttonsNew {
+            display: flex;
+            flex-direction: row-reverse;
+        }
+    
         .inputExisting {
             display: flex;
             flex-direction: column;
@@ -47,12 +57,12 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         .inputExistingWithMenu {
             max-height: 100%;
             overflow-y: hidden;
-            padding-bottom: 30px;
         }
         
         .inputExistingList {
             overflow-y: scroll;
             max-height: 100%;
+            padding-bottom: 30px;
         }
         
         .headerNew {
@@ -60,28 +70,57 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             padding-right: 76px;
             color: var(--quarkus-blue);
         }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: larger;
+            background: var(--lumo-contrast-5pct);
+        }
+    
+        .headerText {
+            padding-left: 5px;
+        }
+    
+        .buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .buttonIcon {
+            height: var(--lumo-icon-size-s); 
+            width: var(--lumo-icon-size-s);
+        }
+    
+        .tool {
+            display: flex;
+            flex-direction: row-reverse;
+            color: var(--lumo-contrast-50pct);
+            font-family: "Lucida Console", Monaco, monospace;
+            font-size: smaller;
+        }
     `;
     
     static properties = {
+        _heading: { state: true },
+        _memoryId: { state: true },
         _messages: { state: true },
         _inputIsBlocked: { state: true }
+        
     };
 
     constructor() { 
         super();
         this._messages = [];
         this._inputIsBlocked = false;
-        this._menuItems = [];
+        this._heading = null;
+        this._memoryId = null;
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this._menuItems = [
-            {
-                key: 'new-chat',
-                component: this._createMenuItem('font-awesome-regular:pen-to-square', 'New chat')
-            }
-          ];
+        this._getCurrentMessages();
     }
     
     disconnectedCallback() {
@@ -100,7 +139,9 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     hotReload(){
-        
+        document.body.style.cursor = 'default';
+        this._inputIsBlocked = false;
+        this._getCurrentMessages();
     }
     
     render() { 
@@ -118,7 +159,20 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     _renderExistingChat(){
         return html`<div class="inputExisting">
                         <div class="inputExistingWithMenu">
-                            <vaadin-menu-bar theme="small icon end-aligned" .items="${this._menuItems}" @item-selected="${this._menuItemSelected}"></vaadin-menu-bar>
+                            <div class="header">
+                                ${this._renderHeading()}
+                                <div class="buttons">
+                                    <vaadin-button theme="tertiary error" @click=${this._deleteChat}>
+                                        <vaadin-icon class="buttonIcon" icon="font-awesome-solid:trash-can" slot="prefix"></vaadin-icon>
+                                        Delete
+                                    </vaadin-button>
+                                    <vaadin-button theme="tertiary" @click=${this._startNewChat}>
+                                        <vaadin-icon class="buttonIcon" icon="font-awesome-regular:pen-to-square" slot="prefix"></vaadin-icon>
+                                        New chat
+                                    </vaadin-button>
+                                    ${this._renderHistoryButton()}
+                                </div>
+                            </div>
                             <div class="inputExistingList">
                                 <vaadin-message-list .items="${this._messages}" markdown></vaadin-message-list>
                             </div>
@@ -126,6 +180,43 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                         ${this._renderInputOrProgressBar()}
                     </div>
             `;
+    }
+    
+    _renderHistoryButton(){
+        return html`<vaadin-button id="history" theme="tertiary">
+                                        <vaadin-icon class="buttonIcon" icon="font-awesome-solid:clock-rotate-left" slot="prefix"></vaadin-icon>
+                                        History
+                                    </vaadin-button>
+                                    <vaadin-popover
+                                        for="history"
+                                        theme="arrow no-padding"
+                                        modal
+                                        accessible-name-ref="history-heading"
+                                        content-width="300px"
+                                        position="bottom"
+                                        ${popoverRenderer(this._historyRenderer, [])}
+                                    ></vaadin-popover>`;
+    }
+    
+    _renderHeading(){
+        if(this._heading){
+            return html`<span class="headerText" title="Memory Id: ${this._memoryId}">${this._heading}</span>`;
+        }else{
+            return html`<l-ring size="26" stroke="2" color="var(--lumo-contrast-25pct)" class="headerText"></l-ring>`;
+        }
+    }
+    
+    _historyRenderer(){
+        return html`<qwc-chappie-chat-history @selectChat="${this._selectChat}" limit=5 namespace=${this.jsonRpc.getExtensionName()}></qwc-chappie-chat-history>`;
+    }
+    
+    _selectChat(e){
+        this._messages = [];
+        document.body.style.cursor = 'progress'; 
+        this.jsonRpc.getChatMessages({memoryId:e.detail}).then(jsonRpcResponse => {
+            this._handleChatMessageResponse(jsonRpcResponse);
+            document.body.style.cursor = 'default';
+        });
     }
     
     _renderInputOrProgressBar(){
@@ -137,7 +228,8 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     _renderNewChat(){
-        return html`<div class="inputNew">
+        return html`<div class="buttonsNew">${this._renderHistoryButton()}</div>
+                    <div class="inputNew">
                         <h1 class="headerNew">Welcome to the Assistant Chat</h2>
                         <div style="width:100%;"><vaadin-message-input class="messageInput" @submit="${this._handleSubmit}"></vaadin-message-input></div>
                     </div>
@@ -150,21 +242,13 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                 </qwc-no-data>`;
     }
     
-    _menuItemSelected(e){
-        const item = e.detail.value;
-        switch (item.key) {
-            case 'new-chat':
-                this._startNewChat();
-                break;
-        }
-    }
-    
-    _startNewChat(){
+    _getCurrentMessages(){
+        this._messages = [];
         document.body.style.cursor = 'progress'; 
-        this.jsonRpc.clearMemory().then(jsonRpcResponse => {
-            this._messages = [];
-            document.body.style.cursor = 'default'; 
-        });
+        this.jsonRpc.getMostRecentChatMessages().then(jsonRpcResponse => {
+            this._handleChatMessageResponse(jsonRpcResponse);
+            document.body.style.cursor = 'default';
+        });    
     }
     
     _handleSubmit(event) {
@@ -176,12 +260,131 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         this._scrollToBottom();
         this.jsonRpc.chat({message:m}).then(jsonRpcResponse => {
             document.body.style.cursor = 'default';
+            
             this._removeLastMessage();
-            this._addAssistantMessage(jsonRpcResponse.result.answer);
+            
+            if(jsonRpcResponse.result?.completedExceptionally){
+                this._addServerErrorMessage();
+            } else {
+                const [key, value] = Object.entries(jsonRpcResponse.result)[0];
+                this._memoryId = key;
+
+                if(value?.completedExceptionally && value?.completedExceptionally === true){
+                    this._addServerErrorMessage();
+                }else{
+                    this._heading = value?.niceName;
+                    
+                    let markdown = value?.answer?.markdown;
+                    let action = this._getActionLabel(value?.answer?.action);
+                    if(markdown){
+                        this._addAssistantMessage(markdown + action);
+                    }
+                }
+            }
+            
             this._inputIsBlocked = false;
+        }).catch((err) => {
+            document.body.style.cursor = 'default';
+            console.error(JSON.stringify(err));
+            this._removeLastMessage();
+            this._inputIsBlocked = false;
+            
+            
+            if(err.error.message){
+                this._addErrorMessage(err.error.message + ". See the Assistant log for details");
+            }else {
+                this._addServerErrorMessage();
+            }
         });
     }
     
+    _handleChatMessageResponse(jsonRpcResponse){
+        let r = jsonRpcResponse?.result;
+        if(r){
+            this._heading = r.summary?.niceName;
+            this._memoryId = r.summary?.memoryId;
+            
+            if(r.messages){
+                let messages = r.messages;
+                for (const m of messages) {
+                    if(m.type === 'USER'){
+                       this._addUserMessage(m.contents[0].text);
+                    }else if(m.type === 'AI'){
+                        const t = m.text?.trim();
+                        if(t){
+                            const obj = JSON.parse(t);
+                            let action = this._getActionLabel(obj?.answer?.action);
+                            if(obj?.answer?.markdown){
+                                this._addAssistantMessage(obj?.answer?.markdown + action);
+                            }else if(obj?.answer?.content && obj?.answer?.path){
+                                let ext = this._getExt(obj?.answer?.path);
+                                this._addAssistantMessage("```"+ ext + "\n" + obj?.answer?.content + "\n```" + action);
+                            }else if(obj?.answer?.content){
+                                this._addAssistantMessage(obj?.answer?.content + action);
+                            }else if(obj?.answer){
+                                // If there is only one field, use that:
+                                let f = this._getOnlyNonEmptyField(obj?.answer);
+                                if(f && f.value){
+                                    this._addAssistantMessage("```\n" + f.value + "\n```" + action);
+                                }else if(f){
+                                    this._addAssistantMessage("```json\n" + JSON.stringify(f, null, 2) + "\n```" + action);
+                                }else{
+                                    // Remove methods
+                                    let clean = this._stripMethodishKeysStrict(obj?.answer);
+                                    this._addAssistantMessage("```json\n" + JSON.stringify(clean, null, 2) + "\n```" + action);
+                                }
+                            }else {
+                                this._addAssistantMessage("```json\n" + JSON.stringify(obj, null, 2) + "\n```" + action);
+                            }
+                        }
+                    }
+                }
+            }   
+        }
+    }
+    
+    _getActionLabel(action){
+        if(action){
+            return "<br><br><div class='tool' title='Suggested MCP Tool'>⚒️ " + action + "</div>";
+        }else{
+            return "";
+        }
+    }
+    
+    _getOnlyNonEmptyField(obj) {
+        const entries = Object.entries(obj).filter(([, v]) => v !== null && v !== undefined);
+        if (entries.length === 1) {
+          const [key, value] = entries[0];
+          return { key, value };
+        }
+        return null;
+    }
+    
+    _getExt(p) {
+        const base = p.split(/[\\/]/).pop();
+        const dot  = base.lastIndexOf('.');
+        return dot > 0 && dot < base.length - 1 ? base.slice(dot + 1) : "";
+    }
+    
+    _deleteChat(){
+        if(this._memoryId){
+            this.jsonRpc.deleteChat({memoryId:this._memoryId});
+        }
+        this._heading = null;
+        this._memoryId = null;
+        this._getCurrentMessages();
+    }
+    
+    _startNewChat(){
+        document.body.style.cursor = 'progress'; 
+        this.jsonRpc.clearMemory().then(jsonRpcResponse => {
+            this._messages = [];
+            this._heading = null;
+            this._memoryId = null;
+            document.body.style.cursor = 'default'; 
+        });
+    }
+   
     _renderConfigureNowButton(){
         return html`<vaadin-button theme="tertiary" @click=${this._configureNow}>
                         <vaadin-icon icon="font-awesome-solid:gears"></vaadin-icon>
@@ -199,6 +402,16 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     
     _addAssistantMessage(message){
         this._addToMessages(message, "Assistant", 5);
+    }
+    
+    _addServerErrorMessage(){
+        this._addErrorMessage("An error occured - see the Assistant log for details");
+    }
+    
+    _addErrorMessage(message){
+        message = "<span style='color:red'>" + message + "</span>";
+        this._addToMessages(message, "Assistant", 5);
+        if(!this._heading)this._heading = "Error";
     }
     
     _addToMessages(message, user, userColorIndex){
@@ -227,24 +440,6 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         };
     }
     
-    _createMenuItem(iconName, text, isChild = false) {
-        const item = document.createElement('vaadin-menu-bar-item');
-        const icon = document.createElement('vaadin-icon');
-
-        if (isChild) {
-            icon.style.width = 'var(--lumo-icon-size-s)';
-            icon.style.height = 'var(--lumo-icon-size-s)';
-            icon.style.marginRight = 'var(--lumo-space-l)';
-        }
-
-        icon.setAttribute('icon', `${iconName}`);
-        item.appendChild(icon);
-        if (text) {
-            item.appendChild(document.createTextNode(text));
-        }
-        return item;
-    }
-    
     _scrollToBottom(){
         const last = Array.from(
             this.shadowRoot.querySelectorAll('vaadin-message')
@@ -256,6 +451,13 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                 block: "end"
             });
         }
+    }
+    
+    _stripMethodishKeysStrict(obj) {
+        const m = /^[A-Za-z_$][\w$]*\s*\([^()]*\)$/;
+        return Object.fromEntries(
+            Object.entries(obj).filter(([k]) => !m.test(k))
+        );
     }
 }
 customElements.define('qwc-chappie-chat', QwcChappieChat);
