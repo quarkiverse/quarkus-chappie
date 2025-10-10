@@ -45,7 +45,7 @@ class BuiltInActionsProcessor {
                 .parameter("queryMessage", String.class, "The search query")
                 .parameter("maxResults", Integer.class, "The maximum number of results to return")
                 .parameter("extension", String.class, "The extension to filter results by, e.g. 'hibernate-orm', may be empty")
-                // .enableMcpFuctionByDefault()
+                .enableMcpFuctionByDefault()
                 .assistantFunction((assistant, p) -> {
                     if (assistant instanceof ChappieAssistant) {
                         // Assistant doesn't have search docs API
