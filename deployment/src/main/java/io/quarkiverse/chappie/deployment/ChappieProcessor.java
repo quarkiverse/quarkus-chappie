@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -42,6 +41,7 @@ import io.quarkus.deployment.console.ConsoleStateManager;
 import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
 import io.quarkus.deployment.util.ArtifactInfoUtil;
 import io.quarkus.dev.console.DevConsoleManager;
+import io.quarkus.devservices.common.StartableContainer;
 import io.quarkus.devui.spi.buildtime.FooterLogBuildItem;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.util.ClassPathUtils;
@@ -51,7 +51,6 @@ import io.vertx.core.Vertx;
 public class ChappieProcessor {
     private static final Logger LOG = Logger.getLogger(ChappieProcessor.class);
     private static final String FEATURE = "assistant";
-    private static volatile DevServicesResultBuildItem.RunningDevService devService;
     static volatile ConsoleStateManager.ConsoleContext chappieConsoleContext;
 
     static volatile ChappieAssistant assistant = new ChappieAssistant();
@@ -62,13 +61,11 @@ public class ChappieProcessor {
             ChappieRecorder recorder,
             BeanContainerBuildItem beanContainer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
-            ChappieRAGBuildItem chappieRAGBuildItem,
             CurateOutcomeBuildItem curateOutcomeBuildItem) {
 
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion(),
-                chappieRAGBuildItem.getProperties());
+                extensionVersionBuildItem.getVersion());
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
@@ -199,75 +196,58 @@ public class ChappieProcessor {
     }
 
     @BuildStep
-    public void startPgvectorDevService(BuildProducer<ChappieRAGBuildItem> chappieRAGProducer,
-            BuildProducer<DevServicesResultBuildItem> devServicesResultProducer,
-            LaunchModeBuildItem launchMode,
-            DockerStatusBuildItem dockerStatus,
-            ChappieConfig cfg) {
+    public DevServicesResultBuildItem startPgvectorDevService(LaunchModeBuildItem launchMode,
+            DockerStatusBuildItem dockerStatus, ChappieConfig cfg) {
 
         if (launchMode.getLaunchMode().isDevOrTest()
                 && cfg.augmenting().enabled()
                 && dockerStatus.isContainerRuntimeAvailable()) {
-
-            String version = Version.getVersion();
-
-            stop();
-
-            if (version.equalsIgnoreCase("999-SNAPSHOT"))
-                version = "latest";
-
-            PostgreSQLContainer<?> container = start(version);
-
-            Map<String, String> props = new HashMap<>();
-            props.put("quarkus.datasource.chappie.db-kind", "postgresql");
-            props.put("quarkus.datasource.chappie.jdbc.url", container.getJdbcUrl());
-            props.put("quarkus.datasource.chappie.username", container.getUsername());
-            props.put("quarkus.datasource.chappie.password", container.getPassword());
-            props.put("quarkus.datasource.chappie.active", "false");
-
-            devService = new DevServicesResultBuildItem.RunningDevService(
-                    "Assistant_Store",
-                    container.getContainerId(),
-                    container::close,
-                    props);
-
-            chappieRAGProducer.produce(new ChappieRAGBuildItem(props));
-            devServicesResultProducer.produce(devService.toBuildItem());
+            return DevServicesResultBuildItem.owned()
+                    .name("Assistant_Store")
+                    .serviceConfig(cfg.augmenting())
+                    .startable(this::createContainer)
+                    .postStartHook(
+                            c -> LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", c.getContainer().getImage(),
+                                    c.getContainer().getJdbcUrl()))
+                    .configProvider(Map.of(
+                            "quarkus.datasource.chappie.db-kind", c -> "postgresql",
+                            "quarkus.datasource.chappie.jdbc.url", c -> c.getContainer().getJdbcUrl(),
+                            "quarkus.datasource.chappie.username", c -> c.getContainer().getUsername(),
+                            "quarkus.datasource.chappie.password", c -> c.getContainer().getPassword(),
+                            "quarkus.datasource.chappie.active", c -> "false"))
+                    .build();
         }
+        return null;
     }
 
-    private PostgreSQLContainer<?> start(String version) {
+    private StartableContainer<? extends PostgreSQLContainer<?>> createContainer() {
+        String version = Version.getVersion();
+
+        if (version.equalsIgnoreCase("999-SNAPSHOT")) {
+            version = "latest";
+        }
+
+        return createContainer(version);
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createContainer(String version) {
         try {
             String image = getImage(version);
 
             DockerImageName img = DockerImageName.parse(image)
                     .asCompatibleSubstituteFor("postgres");
 
-            PostgreSQLContainer<?> container = new PostgreSQLContainer<>(img)
+            return new StartableContainer<>(new PostgreSQLContainer<>(img)
                     .withDatabaseName("postgres")
                     .withUsername("postgres")
-                    .withPassword("postgres");
-
-            container.start();
-            LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", image, container.getJdbcUrl());
-            return container;
-
+                    .withPassword("postgres"));
         } catch (Throwable t) {
+            if (version.equals("latest")) {
+                throw new RuntimeException("Could not start Chappie RAG Dev Service using Quarkus version latest", t);
+            }
             LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s. Falling back to latest version",
                     version);
-            return start("latest");
-        }
-    }
-
-    private void stop() {
-        if (devService != null) {
-            try {
-                devService.close();
-            } catch (Throwable t) {
-                LOG.debug("Failed to stop Chappie pgvector Dev Service cleanly", t);
-            } finally {
-                devService = null;
-            }
+            return createContainer("latest");
         }
     }
 
