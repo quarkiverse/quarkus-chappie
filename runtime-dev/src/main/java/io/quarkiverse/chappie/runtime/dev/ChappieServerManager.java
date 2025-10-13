@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,13 +29,22 @@ import java.util.function.Supplier;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
 
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.jboss.logging.Logger;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
 import io.quarkus.dev.console.DevConsoleManager;
+import io.quarkus.devui.runtime.spi.McpEvent;
+import io.quarkus.devui.runtime.spi.McpServerConfiguration;
+import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.util.ClassPathUtils;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.subscription.Cancellable;
 
 @ApplicationScoped
 public class ChappieServerManager {
@@ -50,8 +58,34 @@ public class ChappieServerManager {
     private String version;
     private Map<String, String> chappieRAGProperties;
 
+    private String devMcpPath;
+    private boolean mcpEnabled = true; // default
+
     private static Supplier<ProcessHandle> getCurrentProcess;
     private static Consumer<ProcessHandle> setCurrentProcess;
+
+    @Inject
+    McpServerConfiguration mcpServerConfiguration;
+
+    @Inject
+    Multi<McpEvent> mcpEventStream;
+
+    private Cancellable subscription;
+
+    void start(@Observes StartupEvent ev) {
+        subscription = mcpEventStream
+                .onOverflow().buffer(256)
+                .onFailure().invoke(t -> LOG.error("MCP Event stream failed upstream", t))
+                .subscribe().with(
+                        evt -> {
+                            try {
+                                handleMcpEvent(evt);
+                            } catch (Throwable t) {
+                                LOG.errorf(t, "MCP Handler failed for event: %s", evt);
+                            }
+                        },
+                        t -> LOG.error("MCP Subscription terminated by upstream failure", t));
+    }
 
     public static void registerProcessHandler(Supplier<ProcessHandle> getter, Consumer<ProcessHandle> setter) {
         getCurrentProcess = getter;
@@ -67,10 +101,11 @@ public class ChappieServerManager {
     }
 
     public SubmissionPublisher<String> init(String version, ChappieAssistant assistant,
-            Map<String, String> chappieRAGProperties) {
+            Map<String, String> chappieRAGProperties, String devMcpPath) {
         this.assistant = assistant;
         this.version = version;
         this.chappieRAGProperties = chappieRAGProperties;
+        this.devMcpPath = devMcpPath;
         if (Files.notExists(configDir)) {
             try {
                 Files.createDirectories(configDir);
@@ -108,17 +143,13 @@ public class ChappieServerManager {
         }
     }
 
-    public boolean clearMemory() {
-        if (isConfigured()) {
-            this.assistant.clearMemoryId();
-            return true;
-        }
-        return false;
+    public ChappieAssistant getChappieAssistant() {
+        return this.assistant;
     }
 
     private boolean isInstalled() {
         if (version.endsWith("SNAPSHOT"))
-            return false; // Always reinstal snapshot
+            return false; // Always re-install snapshot
         Path chappieBase = getChappieBaseDir(version);
         if (Files.exists(chappieBase)) {
             Path chappieServer = getChappieServer(chappieBase);
@@ -127,7 +158,7 @@ public class ChappieServerManager {
         return false;
     }
 
-    public void install(String version) {
+    private void install(String version) {
         try {
             ClassPathUtils.consumeAsStreams("/bin/" + CHAPPIE_SERVER, (InputStream t) -> {
                 try {
@@ -151,29 +182,16 @@ public class ChappieServerManager {
         }
     }
 
+    private void handleMcpEvent(McpEvent evt) {
+        start();
+    }
+
     public boolean isConfigured() {
-        Properties properties = this.loadConfiguration();
+        Properties properties = this.loadConfiguration(null);
         return properties.containsKey(KEY_NAME);
     }
 
-    public Properties loadConfigurationFor(String name) {
-        return load(name);
-    }
-
-    public Properties loadConfiguration() {
-        return load(null);
-    }
-
-    public CompletionStage<Map> chat(String message) {
-        Map<String, String> vars = new HashMap<>();
-        vars.put("message", message);
-        vars.put("extension", "any");
-
-        return this.assistant.assist(Optional.of(CHAT_SYSTEM_MESSAGE), CHAT_USER_MESSAGE, vars,
-                List.of());
-    }
-
-    private Properties load(String name) {
+    public Properties loadConfiguration(String name) {
         Properties fullProps = new Properties();
 
         if (Files.exists(configFile)) {
@@ -262,7 +280,7 @@ public class ChappieServerManager {
     }
 
     public String getConfiguredProviderName() {
-        Properties properties = this.loadConfiguration();
+        Properties properties = this.loadConfiguration(null);
         return properties.getProperty(KEY_NAME, null);
     }
 
@@ -428,7 +446,7 @@ public class ChappieServerManager {
     }
 
     private Map<String, String> getChappieServerArguments() {
-        Properties providerProperties = this.loadConfiguration();
+        Properties providerProperties = this.loadConfiguration(null);
         if (providerProperties.containsKey(KEY_NAME)) {
             String provider = providerProperties.getProperty(KEY_NAME);
 
@@ -457,6 +475,11 @@ public class ChappieServerManager {
             String ragMaxResults = providerProperties.getProperty("ragMaxResults");
             if (ragMaxResults != null && !ragMaxResults.isBlank()) {
                 properties.put("chappie.rag.results.max", ragMaxResults);
+            }
+
+            String ragMinScore = providerProperties.getProperty("ragMinScore");
+            if (ragMinScore != null && !ragMinScore.isBlank()) {
+                properties.put("chappie.rag.score.min", ragMinScore);
             }
 
             String storeMaxMessages = providerProperties.getProperty("storeMaxMessages");
@@ -488,6 +511,7 @@ public class ChappieServerManager {
                 }
             }
 
+            // RAG Settings
             if (this.chappieRAGProperties != null && !this.chappieRAGProperties.isEmpty()) {
 
                 for (Map.Entry<String, String> entry : this.chappieRAGProperties.entrySet()) {
@@ -496,6 +520,25 @@ public class ChappieServerManager {
                     }
                 }
                 properties.put("quarkus.datasource.active", "true");
+            }
+
+            // MCP Settings
+            String mcpEnabled = providerProperties.getProperty("mcpEnabled");
+            if (mcpEnabled != null && !mcpEnabled.isBlank() && mcpEnabled.equalsIgnoreCase("false")) {
+                this.mcpEnabled = false;
+            } else {
+                this.mcpEnabled = true;
+            }
+
+            if (this.mcpEnabled && mcpServerConfiguration.isEnabled()) {
+
+                String mcpExtraServers = getDevMCPServerUrl();
+
+                String mcpServers = providerProperties.getProperty("mcpExtraServers");
+                if (mcpServers != null && !mcpServers.isBlank()) {
+                    mcpExtraServers = mcpExtraServers + "," + mcpServers;
+                }
+                properties.put("chappie.mcp.servers", mcpExtraServers);
             }
 
             return properties;
@@ -513,6 +556,10 @@ public class ChappieServerManager {
                 && (name.equals(OLLAMA));
     }
 
+    public boolean isMcpEnabled() {
+        return this.mcpEnabled;
+    }
+
     private void setAssistantBaseUrl(String baseUrl) {
         this.assistant.setBaseUrl(baseUrl);
 
@@ -521,6 +568,13 @@ public class ChappieServerManager {
             m.put("baseUrl", baseUrl);
         }
         DevConsoleManager.invoke("chappie.setBaseUrl", m);
+    }
+
+    private String getDevMCPServerUrl() {
+        Config c = ConfigProvider.getConfig();
+        String host = c.getValue("quarkus.http.host", String.class);
+        int port = c.getValue("quarkus.http.port", Integer.class);
+        return "http://" + host + ":" + port + this.devMcpPath;
     }
 
     private final Path configDir = Paths.get(System.getProperty("user.home"), ".quarkus", "chappie");
@@ -540,19 +594,4 @@ public class ChappieServerManager {
     private static final String SERVER_PROPERTY_KEY_HOST = "quarkus.http.host";
     private static final String SERVER_PROPERTY_KEY_PORT = "quarkus.http.port";
 
-    private static final String CHAT_SYSTEM_MESSAGE = """
-            You are assisting a Quarkus developer with their project. The developer will ask a question that you should answer as good as possible, using the provided
-            RAG and your own knowledge. Reply in a json format, with only one field called answer. The value for that field should be in Markdown format with your answer.
-
-            If a user say hello or ask you what your name is, reply with an nice introduction sentence. Your name is CHAPPiE, you are named after the 2015 Movie called CHAPPiE written and directed by Neill Blomkamp.
-            If a user asks what can you do or help with, answer that you can help them with their Quarkus questions, and that you have the up-to-date documentation available.
-            If a user just asks a question and nothing about you, you should not add an introduction sentence.
-            For any other questions you need to relate it to Quarkus.
-
-            When suggesting code, never suggest that a user needs to add quarkus-dev-ui in their pom.xml.
-            """;
-
-    private static final String CHAT_USER_MESSAGE = """
-            Here is the user message: {{message}}
-            """;
 }

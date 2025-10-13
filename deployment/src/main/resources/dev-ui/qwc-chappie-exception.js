@@ -291,6 +291,9 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
             this._initTalkToAI();
             // Get the current last know exception
             this.jsonRpc.suggestFix().then(jsonRpcResponse => {
+                
+                console.log(jsonRpcResponse);
+                
                 if(this._showProgressBar){
                     this._suggestedFix = jsonRpcResponse.result;
                 }
