@@ -34,9 +34,9 @@ public class ChappieAssistant implements Assistant {
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
             String userMessageTemplate,
             Map<String, String> variables,
-            List<Path> paths,
-            Class<?> responseType) {
-        return assist(systemMessageTemplate, userMessageTemplate, variables, paths, responseType, true, true);
+            List<Path> paths) {//,
+        //Class<?> responseType) {
+        return assist(systemMessageTemplate, userMessageTemplate, variables, paths, Map.class, true, true);
     }
 
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
@@ -69,13 +69,14 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
-    // TODO: This should be replaced with assist
+    @Deprecated
     @Override
     public <T> CompletionStage<T> exception(Optional<String> systemMessage, String userMessage,
             String stacktrace, Path path) {
         try {
             String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage, Map.of(),
-                    Map.of("stacktrace", stacktrace, "path", path.toString()), null);
+                    Map.of("stacktrace", stacktrace, "path", path.toString()), Map.class);
+
             return (CompletionStage<T>) sendToChappieServer("exception", jsonPayload, ExceptionOutput.class, true);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
@@ -198,14 +199,12 @@ public class ChappieAssistant implements Assistant {
                         }
 
                         String body = response.body();
-
                         ChappieEnvelope envelope = JsonObjectCreator.getEnvelopeOutput(body, responseType);
-
                         this.title = envelope.niceName();
 
                         if (unwrap) {
                             if (responseType.isInstance(String.class)) {
-                                return response.body();
+                                return body;
                             } else {
                                 return envelope.answer();
                             }
@@ -246,17 +245,17 @@ public class ChappieAssistant implements Assistant {
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     int status = response.statusCode();
-                    if (status == 200) {
-                        String body = response.body();
-                        try {
-                            return JsonObjectCreator.getList(response.body());
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to parse messages JSON", e);
-                        }
-                    } else if (status == 204) {
-                        return List.of();
-                    } else {
-                        throw new RuntimeException("Failed: HTTP error code : " + status);
+                    switch (status) {
+                        case 200:
+                            try {
+                                return JsonObjectCreator.getList(response.body());
+                            } catch (Exception e) {
+                                throw new RuntimeException("Failed to parse messages JSON", e);
+                            }
+                        case 204:
+                            return List.of();
+                        default:
+                            throw new RuntimeException("Failed: HTTP error code : " + status);
                     }
                 });
     }

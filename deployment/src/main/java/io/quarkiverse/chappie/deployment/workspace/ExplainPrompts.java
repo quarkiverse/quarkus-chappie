@@ -23,6 +23,9 @@ public interface ExplainPrompts {
             Please explain the provided content. Talk thought what type of content it is and what it does. If possible talk about how it might be used.
 
             Here are the content:
+
+            ```
             {{content}}
+            ```
             """;
 }

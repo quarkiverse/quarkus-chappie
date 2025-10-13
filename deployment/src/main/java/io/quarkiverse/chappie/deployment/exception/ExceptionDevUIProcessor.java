@@ -1,6 +1,11 @@
 package io.quarkiverse.chappie.deployment.exception;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
@@ -115,16 +120,13 @@ class ExceptionDevUIProcessor {
                                 workspaceBuildItem.getPaths());
                         if (sourcePath != null) {
                             String stacktraceString = lastException.getStackTraceString();
-                            CompletionStage<ExceptionOutput> response = assistant.exceptionBuilder()
-                                    .userMessage("The stacktrace is a Java exception")
-                                    .stacktrace(stacktraceString)
-                                    .path(sourcePath)
-                                    .explain();
-                            response.thenAccept((suggestedFix) -> {
+                            CompletionStage<ExceptionPrompts.ExceptionResponse> exceptionResponse = getExceptionResponse(
+                                    assistant, stacktraceString, sourcePath);
+                            exceptionResponse.thenAccept((suggestedFix) -> {
                                 lastSolutionBuildItem.getLastSolution().set(suggestedFix);
                                 lastSolutionBuildItem.getPath().set(sourcePath);
                             });
-                            return response;
+                            return exceptionResponse;
                         } // TODO: We can still attempt this if we could not find a relevant file
                     }
                     return null;
@@ -166,11 +168,10 @@ class ExceptionDevUIProcessor {
                             workspaceBuildItem.getPaths());
                     String stacktraceString = lastException.getStackTraceString();
 
-                    return assistant.exceptionBuilder()
-                            .userMessage("The stacktrace is a Java exception")
-                            .stacktrace(stacktraceString)
-                            .path(sourcePath)
-                            .explain()
+                    CompletionStage<ExceptionPrompts.ExceptionResponse> exceptionResponse = getExceptionResponse(assistant,
+                            stacktraceString, sourcePath);
+
+                    return exceptionResponse
                             .thenApply((Object output) -> {
                                 ExceptionOutput exceptionOutput = (ExceptionOutput) output;
 
@@ -191,6 +192,47 @@ class ExceptionDevUIProcessor {
             return "none";
         }
         return lastException.throwable().getMessage();
+    }
+
+    private CompletionStage<ExceptionPrompts.ExceptionResponse> getExceptionResponse(Assistant assistant,
+            String stacktraceString, Path sourcePath) {
+        Map<String, String> vars = Map.of(
+                "stacktrace", stacktraceString,
+                "content", toContent(sourcePath),
+                "extension", "any"); // Make extension explisitly null so that RAG can kick in for anything
+
+        CompletionStage<ExceptionPrompts.ExceptionResponse> response = assistant.assistBuilder()
+                .systemMessage(ExceptionPrompts.SYSTEM_MESSAGE)
+                .userMessage(ExceptionPrompts.USER_MESSAGE)
+                .variables(vars)
+                .addPath(sourcePath)
+                //.responseType(ExceptionPrompts.ExceptionResponse.class)
+                .assist();
+        return response;
+    }
+
+    private String toContent(Path... path) {
+        StringWriter sw = new StringWriter();
+
+        for (Path p : path) {
+            sw.write(p.toString());
+            sw.write(":");
+            sw.write("\n\n```");
+            sw.write(readContents(p));
+            sw.write("```\n\n");
+        }
+        return sw.toString();
+    }
+
+    private String readContents(Path filePath) {
+        if (filePath != null && Files.exists(filePath)) {
+            try {
+                return Files.readString(filePath);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+        }
+        throw new NullPointerException("filePath is null");
     }
 
 }

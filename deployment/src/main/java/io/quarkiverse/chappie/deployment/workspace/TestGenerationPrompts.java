@@ -20,6 +20,7 @@ public interface TestGenerationPrompts {
 
     static final String USER_MESSAGE = """
             I have the following content in this Quarkus project:
+
             ```
             {{content}}
             ```

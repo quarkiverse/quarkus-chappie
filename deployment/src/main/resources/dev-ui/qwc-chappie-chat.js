@@ -321,6 +321,8 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                                 this._addAssistantMessage("```"+ ext + "\n" + obj?.answer?.content + "\n```" + action);
                             }else if(obj?.answer?.content){
                                 this._addAssistantMessage(obj?.answer?.content + action);
+                            }else if(obj?.answer?.code){
+                                this._addAssistantMessage("```\n" + obj?.answer?.code + "\n```" + action);
                             }else if(obj?.answer){
                                 // If there is only one field, use that:
                                 let f = this._getOnlyNonEmptyField(obj?.answer);
