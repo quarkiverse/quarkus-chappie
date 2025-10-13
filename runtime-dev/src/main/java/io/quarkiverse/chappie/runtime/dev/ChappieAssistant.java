@@ -139,7 +139,7 @@ public class ChappieAssistant implements Assistant {
         }
     }
 
-    public <T> CompletionStage<T> searchDocs(String queryMessage, Integer maxResults, String extension) {
+    public CompletionStage<Map> searchDocs(String queryMessage, Integer maxResults, String extension) {
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("queryMessage", queryMessage);
@@ -151,9 +151,17 @@ public class ChappieAssistant implements Assistant {
             }
             String jsonPayload = JsonObjectCreator.toJsonString(params);
             Log.info("Search payload: " + jsonPayload);
-            return (CompletionStage<T>) sendToChappieServer("search", jsonPayload, Map.class, true);
+
+            HttpRequest searchRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/search"))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                    .build();
+
+            return getObject(searchRequest);
         } catch (Exception ex) {
-            CompletableFuture<T> failedFuture = new CompletableFuture<>();
+            CompletableFuture<Map> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
             Log.info("Search Failed ", ex);
             return failedFuture;
