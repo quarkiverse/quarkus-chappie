@@ -11,7 +11,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
 import io.quarkiverse.chappie.deployment.ContentIO;
-import io.quarkiverse.chappie.runtime.dev.ExceptionOutput;
 import io.quarkus.assistant.deployment.spi.AssistantConsoleBuildItem;
 import io.quarkus.assistant.deployment.spi.AssistantPageBuildItem;
 import io.quarkus.assistant.runtime.dev.Assistant;
@@ -137,7 +136,8 @@ class ExceptionDevUIProcessor {
         buildItemActions.actionBuilder()
                 .methodName("applyFix")
                 .function(code -> {
-                    ExceptionOutput exceptionOutput = (ExceptionOutput) lastSolutionBuildItem.getLastSolution().get();
+                    ExceptionPrompts.ExceptionResponse exceptionOutput = (ExceptionPrompts.ExceptionResponse) lastSolutionBuildItem
+                            .getLastSolution().get();
                     Path path = lastSolutionBuildItem.getPath().get();
                     if (exceptionOutput != null && path != null) {
                         lastSolutionBuildItem.getLastSolution().set(null);
@@ -173,7 +173,7 @@ class ExceptionDevUIProcessor {
 
                     return exceptionResponse
                             .thenApply((Object output) -> {
-                                ExceptionOutput exceptionOutput = (ExceptionOutput) output;
+                                ExceptionPrompts.ExceptionResponse exceptionOutput = (ExceptionPrompts.ExceptionResponse) output;
 
                                 return "\n\n" + exceptionOutput.response() +
                                         "\n\n" + exceptionOutput.explanation() +
@@ -206,7 +206,7 @@ class ExceptionDevUIProcessor {
                 .userMessage(ExceptionPrompts.USER_MESSAGE)
                 .variables(vars)
                 .addPath(sourcePath)
-                //.responseType(ExceptionPrompts.ExceptionResponse.class)
+                .responseType(ExceptionPrompts.ExceptionResponse.class)
                 .assist();
         return response;
     }
