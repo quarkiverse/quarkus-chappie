@@ -63,6 +63,9 @@ public class ChappieAssistant implements Assistant {
 
         try {
 
+            if (responseType == null)
+                responseType = Map.class;
+
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     enhancedVariables, paths, responseType);
 
