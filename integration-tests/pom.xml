@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.quarkiverse.chappie</groupId>
         <artifactId>quarkus-chappie-parent</artifactId>
-        <version>999-SNAPSHOT</version>
+        <version>1.5.0</version>
     </parent>
     <artifactId>quarkus-chappie-integration-tests</artifactId>
     <name>Quarkus Chappie - Integration Tests</name>
