@@ -34,9 +34,9 @@ public class ChappieAssistant implements Assistant {
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
             String userMessageTemplate,
             Map<String, String> variables,
-            List<Path> paths) {//,
-        //Class<?> responseType) {
-        return assist(systemMessageTemplate, userMessageTemplate, variables, paths, Map.class, true, true);
+            List<Path> paths,
+            Class<?> responseType) {
+        return assist(systemMessageTemplate, userMessageTemplate, variables, paths, responseType, true, true);
     }
 
     public <T> CompletionStage<T> assist(Optional<String> systemMessageTemplate,
@@ -46,6 +46,10 @@ public class ChappieAssistant implements Assistant {
             Class<?> responseType,
             boolean unwrap,
             boolean forceNewSession) {
+
+        if (!isAvailable()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Chappie server is not configured"));
+        }
 
         Map<String, String> enhancedVariables = new HashMap<>(variables);
         String extension = getExtension();
@@ -58,26 +62,26 @@ public class ChappieAssistant implements Assistant {
         }
 
         try {
+
+            if (responseType == null)
+                responseType = Map.class;
+
             String jsonPayload = JsonObjectCreator.getWorkspaceInput(systemMessageTemplate.orElse(""), userMessageTemplate,
                     enhancedVariables, paths, responseType);
 
-            return (CompletionStage<T>) sendToChappieServer("assist", jsonPayload, responseType, unwrap);
-        } catch (Exception ex) {
-            CompletableFuture<T> failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(ex);
-            return failedFuture;
-        }
-    }
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/assist"))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json");
 
-    @Deprecated
-    @Override
-    public <T> CompletionStage<T> exception(Optional<String> systemMessage, String userMessage,
-            String stacktrace, Path path) {
-        try {
-            String jsonPayload = JsonObjectCreator.getInput(systemMessage.orElse(""), userMessage, Map.of(),
-                    Map.of("stacktrace", stacktrace, "path", path.toString()), Map.class);
+            if (this.memoryId != null && !this.memoryId.isBlank()) {
+                builder = builder.header(HEADER_MEMORY_ID, this.memoryId);
+            }
 
-            return (CompletionStage<T>) sendToChappieServer("exception", jsonPayload, ExceptionOutput.class, true);
+            HttpRequest assistRequest = builder.POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                    .build();
+
+            return (CompletionStage<T>) getAny(assistRequest, responseType, unwrap);
         } catch (Exception ex) {
             CompletableFuture<T> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(ex);
@@ -189,12 +193,7 @@ public class ChappieAssistant implements Assistant {
         return this.title;
     }
 
-    private <T> CompletionStage<T> sendToChappieServer(String method, String jsonPayload, Class<T> responseType,
-            boolean unwrap) {
-        return sendToChappieServer(createHttpRequest(method, jsonPayload), responseType, unwrap);
-    }
-
-    private <T> CompletionStage<T> sendToChappieServer(HttpRequest request, Class<T> responseType, boolean unwrap) {
+    private <T> CompletionStage<T> getAny(HttpRequest request, Class<T> responseType, boolean unwrap) {
         HttpClient client = HttpClient.newHttpClient();
 
         return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -266,24 +265,6 @@ public class ChappieAssistant implements Assistant {
                             throw new RuntimeException("Failed: HTTP error code : " + status);
                     }
                 });
-    }
-
-    private HttpRequest createHttpRequest(String method, String jsonPayload) {
-        if (isAvailable()) {
-            HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/" + method))
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json");
-
-            if (this.memoryId != null && !this.memoryId.isBlank()) {
-                builder = builder.header(HEADER_MEMORY_ID, this.memoryId);
-            }
-
-            return builder.POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
-                    .build();
-        } else {
-            throw new IllegalStateException("Chappie server is not configured");
-        }
     }
 
     private String getExtension() {

@@ -42,7 +42,7 @@ class BuiltInActionsProcessor {
                             .userMessage(JavaDocPrompts.USER_MESSAGE)
                             .variables(getVars(params))
                             .addPath(getPath(params))
-                            //.responseType(JavaDocPrompts.JavaDocResponse.class)
+                            .responseType(JavaDocPrompts.JavaDocResponse.class)
                             .assist();
                 })
                 .display(Display.replace)
@@ -62,7 +62,7 @@ class BuiltInActionsProcessor {
                             .userMessage(TestGenerationPrompts.USER_MESSAGE)
                             .variables(getVars(params))
                             .addPath(getPath(params))
-                            //.responseType(TestGenerationPrompts.TestGenerationResponse.class)
+                            .responseType(TestGenerationPrompts.TestGenerationResponse.class)
                             .assist();
                 })
                 .pathConverter((Object param) -> {
@@ -90,7 +90,7 @@ class BuiltInActionsProcessor {
                             .userMessage(ExplainPrompts.USER_MESSAGE)
                             .variables(getVars(params))
                             .addPath(getPath(params))
-                            //.responseType(ExplainPrompts.JavaDocResponse.class)
+                            .responseType(ExplainPrompts.JavaDocResponse.class)
                             .assist();
                 })
                 .display(Display.split)
@@ -113,7 +113,7 @@ class BuiltInActionsProcessor {
                                 .userMessage(CompleteTodoPrompts.USER_MESSAGE)
                                 .variables(getVars(params))
                                 .addPath(getPath(params))
-                                //.responseType(CompleteTodoPrompts.CompleteTodoResponse.class)
+                                .responseType(CompleteTodoPrompts.CompleteTodoResponse.class)
                                 .assist();
                     }
                     return params;
