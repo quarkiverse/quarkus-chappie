@@ -14,6 +14,13 @@ extension to you project, example in maven:
     <version>1.4.0</version> <!-- Or latest -->
 </dependency>
 ```
+| Chappie version | Quarkus version |
+| --------------- | --------------- |
+| 1.2.x           | 3.26.1+         |
+| 1.3.x           | 3.26.1+         |
+| 1.4.x           | 3.28.3+         |
+| 1.5.x           | 3.29.0+         |
+
 
 Chappie is a Dev Mode only extension, so this does not add anything to your production application.
 
