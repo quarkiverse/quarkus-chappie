@@ -185,8 +185,14 @@ public class ChappieAssistant implements Assistant {
         this.title = null;
     }
 
+    @Override
     public String getMemoryId() {
         return this.memoryId;
+    }
+
+    @Override
+    public String getChatPath() {
+        return "/quarkus-chappie/chat";
     }
 
     public String getTitle() {
@@ -232,7 +238,6 @@ public class ChappieAssistant implements Assistant {
                 .thenApply(response -> {
                     int status = response.statusCode();
                     if (status == 200) {
-                        String body = response.body();
                         try {
                             return JsonObjectCreator.getMap(response.body());
                         } catch (Exception e) {
