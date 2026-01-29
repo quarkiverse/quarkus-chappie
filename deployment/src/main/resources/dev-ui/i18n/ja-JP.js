@@ -44,6 +44,12 @@ export const templates = {
     'quarkus-chappie-provider-openshift-desc': 'Red HatのエンタープライズAIプラットフォーム。OpenAI互換モデルを安全でスケーラブルなデプロイでサポート。',
     'quarkus-chappie-provider-generic': '汎用OpenAI互換',
     'quarkus-chappie-provider-generic-desc': '独自のAPIキーとベースURLを提供して、任意のOpenAI互換エンドポイントに接続します。',
+    'quarkus-chappie-provider-gemini': 'Gemini',
+    'quarkus-chappie-provider-gemini-desc': 'マルチモーダルタスクと複雑な推論に優れたGoogleの高度なAIモデル。',
+    'quarkus-chappie-provider-anthropic': 'Anthropic',
+    'quarkus-chappie-provider-anthropic-desc': 'Claudeを構築するAI安全性企業で、信頼性が高く、解釈可能で、制御可能なAIシステムに焦点を当てています。',
+    'quarkus-chappie-provider-watsonx': 'WatsonX',
+    'quarkus-chappie-provider-watsonx-desc': '機械学習モデルの構築、トレーニング、デプロイのためのIBMのエンタープライズAIおよびデータプラットフォーム。',
 
     // Provider instructions
     'quarkus-chappie-openai-instructions': 'OpenAIを使用するには、OpenAI APIキーを提供する必要があります',
@@ -51,6 +57,9 @@ export const templates = {
     'quarkus-chappie-podman-instructions': 'Podman AIを使用するには、podmanをインストールして実行する必要があります。podman-desktop.io/docs/installationを参照してください',
     'quarkus-chappie-podman-extension': 'Podman AI Lab拡張機能もインストールする必要があります。podman-desktop.io/docs/ai-lab/installingを参照してください',
     'quarkus-chappie-openshift-instructions': 'redhat.com/en/products/ai/openshift-aiを参照してください',
+    'quarkus-chappie-gemini-instructions': 'Geminiを使用するには、Google AI StudioからGemini APIキーを提供する必要があります。',
+    'quarkus-chappie-anthropic-instructions': 'Anthropicを使用するには、Anthropic APIキーを提供する必要があります。',
+    'quarkus-chappie-watsonx-instructions': 'WatsonXを使用するには、APIキーとプロジェクトIDを提供する必要があります。オプションでベースURLまたはクラウドリージョンを提供してください。',
 
     // Form labels
     'quarkus-chappie-api-key': 'APIキー',
@@ -68,6 +77,8 @@ export const templates = {
     'quarkus-chappie-max-store-messages': '最大保存メッセージ数',
     'quarkus-chappie-enable-mcp': 'MCPを有効化（デフォルトで、利用可能な場合はDev MCPが追加されます）',
     'quarkus-chappie-more-mcp-servers': 'その他のMCPサーバー',
+    'quarkus-chappie-project-id': 'プロジェクトID',
+    'quarkus-chappie-cloud-region': 'クラウドリージョン',
 
     // Form placeholders
     'quarkus-chappie-api-key-placeholder': 'sk-....',
@@ -77,6 +88,7 @@ export const templates = {
     // Validation messages
     'quarkus-chappie-need-api-key': 'APIキーを提供する必要があります',
     'quarkus-chappie-need-base-url': 'ベースURLを提供する必要があります',
+    'quarkus-chappie-need-api-key-project-id': 'APIキーとプロジェクトIDを提供する必要があります',
 
     // Save/notification messages
     'quarkus-chappie-save-failed': 'プロバイダーの詳細が保存されませんでした。詳細はログを参照してください',

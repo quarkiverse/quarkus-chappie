@@ -44,6 +44,12 @@ export const templates = {
     'quarkus-chappie-provider-openshift-desc': 'Piattaforma AI aziendale di Red Hat, che supporta modelli compatibili OpenAI con deployment sicuri e scalabili.',
     'quarkus-chappie-provider-generic': 'Compatibile OpenAI Generico',
     'quarkus-chappie-provider-generic-desc': 'Connetti qualsiasi endpoint compatibile OpenAI fornendo la tua chiave API e URL base.',
+    'quarkus-chappie-provider-gemini': 'Gemini',
+    'quarkus-chappie-provider-gemini-desc': 'Modello AI avanzato di Google che eccelle in attività multimodali e ragionamento complesso.',
+    'quarkus-chappie-provider-anthropic': 'Anthropic',
+    'quarkus-chappie-provider-anthropic-desc': 'Azienda di sicurezza AI che costruisce Claude, focalizzata su sistemi AI affidabili, interpretabili e controllabili.',
+    'quarkus-chappie-provider-watsonx': 'WatsonX',
+    'quarkus-chappie-provider-watsonx-desc': 'Piattaforma AI e dati aziendali di IBM per costruire, addestrare e distribuire modelli di machine learning.',
 
     // Provider instructions
     'quarkus-chappie-openai-instructions': 'Per usare OpenAI devi fornire una chiave API OpenAI',
@@ -51,6 +57,9 @@ export const templates = {
     'quarkus-chappie-podman-instructions': 'Per usare Podman AI devi installare ed eseguire podman. Vedi podman-desktop.io/docs/installation',
     'quarkus-chappie-podman-extension': 'Devi anche installare l\'estensione Podman AI Lab. Vedi podman-desktop.io/docs/ai-lab/installing',
     'quarkus-chappie-openshift-instructions': 'Vedi redhat.com/en/products/ai/openshift-ai',
+    'quarkus-chappie-gemini-instructions': 'Per utilizzare Gemini è necessario fornire una chiave API Gemini da Google AI Studio.',
+    'quarkus-chappie-anthropic-instructions': 'Per utilizzare Anthropic è necessario fornire una chiave API Anthropic.',
+    'quarkus-chappie-watsonx-instructions': 'Per utilizzare WatsonX è necessario fornire una chiave API e un ID progetto. Facoltativamente, fornire un URL di base o una regione cloud.',
 
     // Form labels
     'quarkus-chappie-api-key': 'Chiave API',
@@ -68,6 +77,8 @@ export const templates = {
     'quarkus-chappie-max-store-messages': 'Messaggi massimi archiviati',
     'quarkus-chappie-enable-mcp': 'Abilita MCP (Per impostazione predefinita, se disponibile, verrà aggiunto Dev MCP)',
     'quarkus-chappie-more-mcp-servers': 'Altri server MCP',
+    'quarkus-chappie-project-id': 'ID Progetto',
+    'quarkus-chappie-cloud-region': 'Regione Cloud',
 
     // Form placeholders
     'quarkus-chappie-api-key-placeholder': 'sk-....',
@@ -77,6 +88,7 @@ export const templates = {
     // Validation messages
     'quarkus-chappie-need-api-key': 'Devi fornire una chiave API',
     'quarkus-chappie-need-base-url': 'Devi fornire un URL base',
+    'quarkus-chappie-need-api-key-project-id': 'È necessario fornire una chiave API e un ID progetto',
 
     // Save/notification messages
     'quarkus-chappie-save-failed': 'Dettagli del provider non salvati. Consulta il log per i dettagli',

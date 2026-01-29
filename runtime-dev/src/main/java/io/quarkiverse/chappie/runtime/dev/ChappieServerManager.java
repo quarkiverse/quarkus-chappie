@@ -518,6 +518,45 @@ public class ChappieServerManager {
                 if (model != null && !model.isBlank()) {
                     properties.put("chappie.ollama.model-name", model);
                 }
+            } else if (isGemini(provider)) {
+                String apiKey = providerProperties.getProperty("apiKey");
+                if (apiKey != null && !apiKey.isBlank()) {
+                    properties.put("chappie.gemini.api-key", apiKey);
+                }
+                String model = providerProperties.getProperty("model");
+                if (model != null && !model.isBlank()) {
+                    properties.put("chappie.gemini.model-name", model);
+                }
+            } else if (isAnthropic(provider)) {
+                String apiKey = providerProperties.getProperty("apiKey");
+                if (apiKey != null && !apiKey.isBlank()) {
+                    properties.put("chappie.anthropic.api-key", apiKey);
+                }
+                String model = providerProperties.getProperty("model");
+                if (model != null && !model.isBlank()) {
+                    properties.put("chappie.anthropic.model-name", model);
+                }
+            } else if (isWatsonX(provider)) {
+                String apiKey = providerProperties.getProperty("apiKey");
+                if (apiKey != null && !apiKey.isBlank()) {
+                    properties.put("chappie.watsonx.api-key", apiKey);
+                }
+                String baseUrl = providerProperties.getProperty("baseUrl");
+                if (baseUrl != null && !baseUrl.isBlank()) {
+                    properties.put("chappie.watsonx.base-url", baseUrl);
+                }
+                String cloudRegion = providerProperties.getProperty("cloudRegion");
+                if (cloudRegion != null && !cloudRegion.isBlank()) {
+                    properties.put("chappie.watsonx.cloud-region", cloudRegion);
+                }
+                String projectId = providerProperties.getProperty("projectId");
+                if (projectId != null && !projectId.isBlank()) {
+                    properties.put("chappie.watsonx.project-id", projectId);
+                }
+                String model = providerProperties.getProperty("model");
+                if (model != null && !model.isBlank()) {
+                    properties.put("chappie.watsonx.model-name", model);
+                }
             }
 
             // RAG Settings
@@ -565,6 +604,18 @@ public class ChappieServerManager {
                 && (name.equals(OLLAMA));
     }
 
+    public boolean isGemini(String name) {
+        return name != null && name.equals(GEMINI);
+    }
+
+    public boolean isAnthropic(String name) {
+        return name != null && name.equals(ANTHROPIC);
+    }
+
+    public boolean isWatsonX(String name) {
+        return name != null && name.equals(WATSONX);
+    }
+
     public boolean isMcpEnabled() {
         return this.mcpEnabled;
     }
@@ -599,6 +650,9 @@ public class ChappieServerManager {
     public static final String OPENSHIFT_AI = "OpenShift AI";
     public static final String GENERIC_OPENAI = "Generic OpenAI-Compatible";
     public static final String OLLAMA = "Ollama";
+    public static final String GEMINI = "Gemini";
+    public static final String ANTHROPIC = "Anthropic";
+    public static final String WATSONX = "WatsonX";
 
     private static final String SERVER_PROPERTY_KEY_HOST = "quarkus.http.host";
     private static final String SERVER_PROPERTY_KEY_PORT = "quarkus.http.port";

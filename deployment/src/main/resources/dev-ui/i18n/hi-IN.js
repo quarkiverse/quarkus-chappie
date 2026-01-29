@@ -44,6 +44,12 @@ export const templates = {
     'quarkus-chappie-provider-openshift-desc': 'Red Hat का एंटरप्राइज़ AI प्लेटफ़ॉर्म, सुरक्षित, स्केलेबल तैनाती के साथ OpenAI-संगत मॉडल का समर्थन करता है।',
     'quarkus-chappie-provider-generic': 'सामान्य OpenAI-संगत',
     'quarkus-chappie-provider-generic-desc': 'अपनी खुद की API कुंजी और बेस URL प्रदान करके किसी भी OpenAI-संगत एंडपॉइंट से कनेक्ट करें।',
+    'quarkus-chappie-provider-gemini': 'Gemini',
+    'quarkus-chappie-provider-gemini-desc': 'Google का उन्नत AI मॉडल जो मल्टीमॉडल कार्यों और जटिल तर्क में उत्कृष्ट है।',
+    'quarkus-chappie-provider-anthropic': 'Anthropic',
+    'quarkus-chappie-provider-anthropic-desc': 'AI सुरक्षा कंपनी जो Claude बनाती है, विश्वसनीय, व्याख्यात्मक और नियंत्रणीय AI प्रणालियों पर केंद्रित।',
+    'quarkus-chappie-provider-watsonx': 'WatsonX',
+    'quarkus-chappie-provider-watsonx-desc': 'मशीन लर्निंग मॉडल बनाने, प्रशिक्षित करने और तैनात करने के लिए IBM का उद्यम AI और डेटा प्लेटफ़ॉर्म।',
 
     // Provider instructions
     'quarkus-chappie-openai-instructions': 'OpenAI का उपयोग करने के लिए आपको एक OpenAI API कुंजी प्रदान करनी होगी',
@@ -51,6 +57,9 @@ export const templates = {
     'quarkus-chappie-podman-instructions': 'Podman AI का उपयोग करने के लिए आपको podman इंस्टॉल और चलाना होगा। podman-desktop.io/docs/installation देखें',
     'quarkus-chappie-podman-extension': 'आपको Podman AI Lab एक्सटेंशन भी इंस्टॉल करना होगा। podman-desktop.io/docs/ai-lab/installing देखें',
     'quarkus-chappie-openshift-instructions': 'redhat.com/en/products/ai/openshift-ai देखें',
+    'quarkus-chappie-gemini-instructions': 'Gemini का उपयोग करने के लिए आपको Google AI Studio से Gemini API कुंजी प्रदान करनी होगी।',
+    'quarkus-chappie-anthropic-instructions': 'Anthropic का उपयोग करने के लिए आपको Anthropic API कुंजी प्रदान करनी होगी।',
+    'quarkus-chappie-watsonx-instructions': 'WatsonX का उपयोग करने के लिए आपको API कुंजी और प्रोजेक्ट ID प्रदान करना होगा। वैकल्पिक रूप से बेस URL या क्लाउड क्षेत्र प्रदान करें।',
 
     // Form labels
     'quarkus-chappie-api-key': 'API कुंजी',
@@ -68,6 +77,8 @@ export const templates = {
     'quarkus-chappie-max-store-messages': 'अधिकतम संग्रहीत संदेश',
     'quarkus-chappie-enable-mcp': 'MCP सक्षम करें (डिफ़ॉल्ट रूप से, यदि उपलब्ध हो, तो Dev MCP जोड़ा जाएगा)',
     'quarkus-chappie-more-mcp-servers': 'अधिक MCP सर्वर',
+    'quarkus-chappie-project-id': 'प्रोजेक्ट ID',
+    'quarkus-chappie-cloud-region': 'क्लाउड क्षेत्र',
 
     // Form placeholders
     'quarkus-chappie-api-key-placeholder': 'sk-....',
@@ -77,6 +88,7 @@ export const templates = {
     // Validation messages
     'quarkus-chappie-need-api-key': 'आपको एक API कुंजी प्रदान करनी होगी',
     'quarkus-chappie-need-base-url': 'आपको एक बेस URL प्रदान करना होगा',
+    'quarkus-chappie-need-api-key-project-id': 'आपको API कुंजी और प्रोजेक्ट ID प्रदान करना होगा',
 
     // Save/notification messages
     'quarkus-chappie-save-failed': 'प्रदाता विवरण सहेजे नहीं गए। विवरण के लिए लॉग देखें',

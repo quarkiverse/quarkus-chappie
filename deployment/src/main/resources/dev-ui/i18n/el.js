@@ -44,6 +44,12 @@ export const templates = {
     'quarkus-chappie-provider-openshift-desc': 'Η εταιρική πλατφόρμα AI της Red Hat, υποστηρίζοντας μοντέλα συμβατά με OpenAI με ασφαλείς, επεκτάσιμες αναπτύξεις.',
     'quarkus-chappie-provider-generic': 'Γενικό Συμβατό με OpenAI',
     'quarkus-chappie-provider-generic-desc': 'Συνδεθείτε σε οποιοδήποτε τελικό σημείο συμβατό με OpenAI παρέχοντας το δικό σας κλειδί API και βασική διεύθυνση URL.',
+    'quarkus-chappie-provider-gemini': 'Gemini',
+    'quarkus-chappie-provider-gemini-desc': 'Προηγμένο μοντέλο AI της Google που διαπρέπει σε πολυτροπικές εργασίες και σύνθετη συλλογιστική.',
+    'quarkus-chappie-provider-anthropic': 'Anthropic',
+    'quarkus-chappie-provider-anthropic-desc': 'Εταιρεία ασφάλειας AI που κατασκευάζει το Claude, επικεντρωμένη σε αξιόπιστα, ερμηνεύσιμα και ελέγξιμα συστήματα AI.',
+    'quarkus-chappie-provider-watsonx': 'WatsonX',
+    'quarkus-chappie-provider-watsonx-desc': 'Εταιρική πλατφόρμα AI και δεδομένων της IBM για δημιουργία, εκπαίδευση και ανάπτυξη μοντέλων μηχανικής μάθησης.',
 
     // Provider instructions
     'quarkus-chappie-openai-instructions': 'Για να χρησιμοποιήσετε το OpenAI πρέπει να παρέχετε ένα κλειδί API του OpenAI',
@@ -51,6 +57,9 @@ export const templates = {
     'quarkus-chappie-podman-instructions': 'Για να χρησιμοποιήσετε το Podman AI πρέπει να εγκαταστήσετε και να εκτελέσετε το podman. Δείτε το podman-desktop.io/docs/installation',
     'quarkus-chappie-podman-extension': 'Πρέπει επίσης να εγκαταστήσετε την επέκταση Podman AI Lab. Δείτε το podman-desktop.io/docs/ai-lab/installing',
     'quarkus-chappie-openshift-instructions': 'Δείτε το redhat.com/en/products/ai/openshift-ai',
+    'quarkus-chappie-gemini-instructions': 'Για να χρησιμοποιήσετε το Gemini πρέπει να παρέχετε ένα κλειδί API Gemini από το Google AI Studio.',
+    'quarkus-chappie-anthropic-instructions': 'Για να χρησιμοποιήσετε το Anthropic πρέπει να παρέχετε ένα κλειδί API Anthropic.',
+    'quarkus-chappie-watsonx-instructions': 'Για να χρησιμοποιήσετε το WatsonX πρέπει να παρέχετε ένα κλειδί API και αναγνωριστικό έργου. Προαιρετικά παρέχετε μια βασική διεύθυνση URL ή περιοχή cloud.',
 
     // Form labels
     'quarkus-chappie-api-key': 'Κλειδί API',
@@ -68,6 +77,8 @@ export const templates = {
     'quarkus-chappie-max-store-messages': 'Μέγιστα αποθηκευμένα μηνύματα',
     'quarkus-chappie-enable-mcp': 'Ενεργοποίηση MCP (Από προεπιλογή, εάν διατίθεται, θα προστεθεί το Dev MCP)',
     'quarkus-chappie-more-mcp-servers': 'Περισσότεροι διακομιστές MCP',
+    'quarkus-chappie-project-id': 'Αναγνωριστικό Έργου',
+    'quarkus-chappie-cloud-region': 'Περιοχή Cloud',
 
     // Form placeholders
     'quarkus-chappie-api-key-placeholder': 'sk-....',
@@ -77,6 +88,7 @@ export const templates = {
     // Validation messages
     'quarkus-chappie-need-api-key': 'Πρέπει να παρέχετε ένα κλειδί API',
     'quarkus-chappie-need-base-url': 'Πρέπει να παρέχετε μια βασική διεύθυνση URL',
+    'quarkus-chappie-need-api-key-project-id': 'Πρέπει να παρέχετε ένα κλειδί API και αναγνωριστικό έργου',
 
     // Save/notification messages
     'quarkus-chappie-save-failed': 'Οι λεπτομέρειες του παρόχου δεν αποθηκεύτηκαν. Δείτε το αρχείο καταγραφής για λεπτομέρειες',

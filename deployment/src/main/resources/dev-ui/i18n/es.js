@@ -44,6 +44,12 @@ export const templates = {
     'quarkus-chappie-provider-openshift-desc': 'Plataforma de IA empresarial de Red Hat, que soporta modelos compatibles con OpenAI con despliegues seguros y escalables.',
     'quarkus-chappie-provider-generic': 'Compatible con OpenAI Genérico',
     'quarkus-chappie-provider-generic-desc': 'Conecte cualquier punto final compatible con OpenAI proporcionando su propia clave API y URL base.',
+    'quarkus-chappie-provider-gemini': 'Gemini',
+    'quarkus-chappie-provider-gemini-desc': 'Modelo de IA avanzado de Google que destaca en tareas multimodales y razonamiento complejo.',
+    'quarkus-chappie-provider-anthropic': 'Anthropic',
+    'quarkus-chappie-provider-anthropic-desc': 'Empresa de seguridad de IA que construye Claude, enfocada en sistemas de IA confiables, interpretables y dirigibles.',
+    'quarkus-chappie-provider-watsonx': 'WatsonX',
+    'quarkus-chappie-provider-watsonx-desc': 'Plataforma empresarial de IA y datos de IBM para construir, entrenar e implementar modelos de aprendizaje automático.',
 
     // Provider instructions
     'quarkus-chappie-openai-instructions': 'Para usar OpenAI necesita proporcionar una clave API de OpenAI',
@@ -51,6 +57,9 @@ export const templates = {
     'quarkus-chappie-podman-instructions': 'Para usar Podman AI necesita instalar y ejecutar podman. Vea podman-desktop.io/docs/installation',
     'quarkus-chappie-podman-extension': 'También necesita instalar la extensión Podman AI Lab. Vea podman-desktop.io/docs/ai-lab/installing',
     'quarkus-chappie-openshift-instructions': 'Vea redhat.com/en/products/ai/openshift-ai',
+    'quarkus-chappie-gemini-instructions': 'Para usar Gemini necesitas proporcionar una clave de API de Gemini desde Google AI Studio.',
+    'quarkus-chappie-anthropic-instructions': 'Para usar Anthropic necesitas proporcionar una clave de API de Anthropic.',
+    'quarkus-chappie-watsonx-instructions': 'Para usar WatsonX necesitas proporcionar una clave de API y un ID de proyecto. Opcionalmente proporciona una URL base o región de nube.',
 
     // Form labels
     'quarkus-chappie-api-key': 'Clave API',
@@ -68,6 +77,8 @@ export const templates = {
     'quarkus-chappie-max-store-messages': 'Mensajes máximos almacenados',
     'quarkus-chappie-enable-mcp': 'Habilitar MCP (Por defecto, si está disponible, se agregará Dev MCP)',
     'quarkus-chappie-more-mcp-servers': 'Más servidores MCP',
+    'quarkus-chappie-project-id': 'ID de Proyecto',
+    'quarkus-chappie-cloud-region': 'Región de Nube',
 
     // Form placeholders
     'quarkus-chappie-api-key-placeholder': 'sk-....',
@@ -77,6 +88,7 @@ export const templates = {
     // Validation messages
     'quarkus-chappie-need-api-key': 'Debe proporcionar una clave API',
     'quarkus-chappie-need-base-url': 'Debe proporcionar una URL base',
+    'quarkus-chappie-need-api-key-project-id': 'Necesitas proporcionar una clave de API y un ID de proyecto',
 
     // Save/notification messages
     'quarkus-chappie-save-failed': 'No se guardaron los detalles del proveedor. Consulte el registro para más detalles',
