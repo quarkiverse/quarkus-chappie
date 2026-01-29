@@ -294,6 +294,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         }
     }
     
+    
+    
     _renderUnlistedPageLink(page){
         return html`<div class="unlistedLink" style="color:${page.color};" @click=${() => this._navigateToPage(page)}>
                         <vaadin-icon icon="${page.icon}"></vaadin-icon> <span>${page.title}</span>
@@ -308,12 +310,18 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     
     _renderLogo(name){
         if(!name && this._selectedProvider && this._selectedProvider.name)name = this._selectedProvider.name;
-        
         if(name){
-            let logo = "./" + name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
-            if(logo){
-                return html`<img src="${logo}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
-            }
+            // Dynamically construct the full logo URL to work from any page
+            const pathname = window.location.pathname;
+            const devUiIndex = pathname.indexOf('/dev-ui/');
+            const basePath = devUiIndex !== -1
+                ? pathname.substring(0, devUiIndex + '/dev-ui/'.length)
+                : '/dev-ui/';
+
+            const logoName = name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
+            const logoUrl = window.location.origin + basePath + "quarkus-chappie/" + logoName;
+
+            return html`<img src="${logoUrl}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
         }
     }
     
