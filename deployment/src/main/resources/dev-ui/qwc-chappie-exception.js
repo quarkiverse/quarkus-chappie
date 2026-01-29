@@ -1,5 +1,6 @@
 import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { JsonRpc } from 'jsonrpc';
+import { msg, str, updateWhenLocaleChanges } from 'localization';
 import '@vaadin/details';
 import '@vaadin/button';
 import '@vaadin/progress-bar';
@@ -79,8 +80,9 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
         _loadedConfiguration: { state: true }
     };
 
-    constructor() { 
+    constructor() {
         super();
+        updateWhenLocaleChanges(this);
         this._lastException = null;
         this._suggestedFix = null;
         this._showProgressBar = false;
@@ -120,24 +122,24 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                         ${this._renderLoadingDialog()}
                         ${this._renderAIResponseDialog()}`;
         } else {
-            return html`<qwc-no-data message="No exception detected yet.">
+            return html`<qwc-no-data message="${msg('No exception detected yet.', { id: 'quarkus-chappie-no-exception' })}">
                             ${this._renderCheckNowButton()}
                 </qwc-no-data>`;
         }
     }
-    
+
     _renderCheckNowButton(){
         return html`<vaadin-button theme="tertiary" @click=${this._checkLastException}>
                         <vaadin-icon icon="font-awesome-solid:repeat"></vaadin-icon>
-                        Check now
+                        ${msg('Check now', { id: 'quarkus-chappie-check-now' })}
                     </vaadin-button>`;
     }
     
     _renderLoadingDialog(){
         if(this._showProgressBar) {
             return html`<vaadin-confirm-dialog
-                            header="Talking to the Quarkus AI Assistant..."
-                            confirm-text="Cancel"
+                            header="${msg('Talking to the Quarkus AI Assistant...', { id: 'quarkus-chappie-talking-to-assistant' })}"
+                            confirm-text="${msg('Cancel', { id: 'quarkus-chappie-cancel' })}"
                             confirm-theme="error secondary"
                             .opened="${this._showProgressBar}"
                             @confirm="${this._termTalkToAI}">
@@ -145,7 +147,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                         </vaadin-confirm-dialog>`;
         }
     }
-    
+
     _renderLoadingDialogContent(){
         return html`<div class="progress">
                             <vaadin-progress-bar
@@ -154,7 +156,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                                 aria-describedby="sublbl"
                             ></vaadin-progress-bar>
                             <span class="text-secondary text-xs" id="sublbl">
-                                This can take a while, please hold
+                                ${msg('This can take a while, please hold', { id: 'quarkus-chappie-please-hold' })}
                             </span>
                         </div>`;
     }
@@ -185,7 +187,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     _renderAIResponseDialogHeader() {
         return html`
           <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <span style="font-weight: bold;font-size: x-large;">Suggested fix from the Quarkus AI Assistant</span>
+            <span style="font-weight: bold;font-size: x-large;">${msg('Suggested fix from the Quarkus AI Assistant', { id: 'quarkus-chappie-suggested-fix' })}</span>
             <qui-assistant-warning></qui-assistant-warning>
           </div>
         `;
@@ -197,7 +199,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
 
                             <p>${this._suggestedFix.explanation}</p>
 
-                            <vaadin-details summary="Diff">
+                            <vaadin-details summary="${msg('Diff', { id: 'quarkus-chappie-diff' })}">
                                 <div class="codeBlock">
                                     <qui-code-block
                                         mode='diff'
@@ -205,10 +207,10 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                                         <slot>${this._suggestedFix.diff}</slot>
                                     </qui-code-block>
                                 </div>
-                            </vaadin-details>    
+                            </vaadin-details>
 
-                            <h4>Suggested new code:</h4>
-                            
+                            <h4>${msg('Suggested new code:', { id: 'quarkus-chappie-suggested-new-code' })}</h4>
+
                             <div class="codeBlock">
                                 <qui-code-block
                                     mode='java'
@@ -216,7 +218,7 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
                                     <slot>${this._suggestedFix.manipulatedContent}</slot>
                                 </qui-code-block>
                             </div>
-                            
+
                         </div>`;
     }
     
@@ -224,16 +226,16 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
         return html`<div style="margin-right: auto;">
                         <vaadin-button theme="primary" @click="${this._applyFix}">
                             <vaadin-icon icon="font-awesome-solid:floppy-disk"></vaadin-icon>
-                            Save
+                            ${msg('Save', { id: 'quarkus-chappie-save' })}
                         </vaadin-button>
-                        <vaadin-button theme="secondary" @click="${this._copyFix}"> 
+                        <vaadin-button theme="secondary" @click="${this._copyFix}">
                             <vaadin-icon icon="font-awesome-solid:copy"></vaadin-icon>
-                            Copy
+                            ${msg('Copy', { id: 'quarkus-chappie-copy' })}
                         </vaadin-button>
                     </div>
                     <vaadin-button theme="tertiary" @click="${this._clearAIResponseDialog}">
                         <vaadin-icon icon="font-awesome-solid:trash-can"></vaadin-icon>
-                        Discard
+                        ${msg('Discard', { id: 'quarkus-chappie-discard' })}
                     </vaadin-button>`;
     }
     
@@ -258,13 +260,13 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     _renderIDEButton(){
         return html`<qui-ide-link class="ide" title='Click to view where the exception occurred'
                         fileName='${this._lastException.stackTraceElement.className}'
-                        lineNumber=${this._lastException.stackTraceElement.lineNumber}>View in IDE
+                        lineNumber=${this._lastException.stackTraceElement.lineNumber}>${msg('View in IDE', { id: 'quarkus-chappie-view-in-ide' })}
                     </qui-ide-link>`;
     }
-    
+
     _renderFixButton(){
         if(!this._showProgressBar && !this._suggestedFix){
-            return html`<vaadin-button theme="primary small" @click="${this._suggestFix}">Suggest fix with AI</vaadin-button>`;
+            return html`<vaadin-button theme="primary small" @click="${this._suggestFix}">${msg('Suggest fix with AI', { id: 'quarkus-chappie-suggest-fix' })}</vaadin-button>`;
         }
     }
     
@@ -305,26 +307,26 @@ export class QwcChappieException extends observeState(QwcHotReloadElement) {
     }
     
     _applyFix(){
-        this.jsonRpc.applyFix().then(jsonRpcResponse => { 
-            notifier.showInfoMessage("Updated " + jsonRpcResponse.result);
+        this.jsonRpc.applyFix().then(jsonRpcResponse => {
+            notifier.showInfoMessage(msg(str`Updated ${0}`, { id: 'quarkus-chappie-updated' })(jsonRpcResponse.result));
             this._clearAIResponseDialog();
             super.forceRestart();
         });
     }
-    
+
     _copyFix(){
         const content = this._suggestedFix?.manipulatedContent;
         if (!content) {
-            notifier.showWarningMessage("There is no content");
+            notifier.showWarningMessage(msg('There is no content', { id: 'quarkus-chappie-no-content' }));
             return;
         }
-        
+
         navigator.clipboard.writeText(content)
             .then(() => {
-                notifier.showInfoMessage("Content copied to clipboard");
+                notifier.showInfoMessage(msg('Content copied to clipboard', { id: 'quarkus-chappie-content-copied' }));
             })
             .catch(err => {
-                notifier.showErrorMessage("Failed to copy content:" + err);
+                notifier.showErrorMessage(msg(str`Failed to copy content: ${0}`, { id: 'quarkus-chappie-copy-failed' })(err));
             });
     }
     

@@ -215,11 +215,11 @@ public class ChappieProcessor {
                             c -> LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", c.getContainer().getImage(),
                                     c.getContainer().getJdbcUrl()))
                     .configProvider(Map.of(
-                            "quarkus.datasource.chappie.db-kind", c -> "postgresql",
-                            "quarkus.datasource.chappie.jdbc.url", c -> c.getContainer().getJdbcUrl(),
-                            "quarkus.datasource.chappie.username", c -> c.getContainer().getUsername(),
-                            "quarkus.datasource.chappie.password", c -> c.getContainer().getPassword(),
-                            "quarkus.datasource.chappie.active", c -> "false"))
+                            "chappie.rag.db-kind", c -> "postgresql",
+                            "chappie.rag.jdbc.url", c -> c.getContainer().getJdbcUrl(),
+                            "chappie.rag.username", c -> c.getContainer().getUsername(),
+                            "chappie.rag.password", c -> c.getContainer().getPassword(),
+                            "chappie.rag.active", c -> "false"))
                     .build();
         }
         return null;

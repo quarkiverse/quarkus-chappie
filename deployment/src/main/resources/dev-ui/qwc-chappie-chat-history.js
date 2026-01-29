@@ -1,6 +1,7 @@
 import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { JsonRpc } from 'jsonrpc';
 import { observeState } from 'lit-element-state';
+import { msg, updateWhenLocaleChanges } from 'localization';
 import '@vaadin/progress-bar';
 import '@qomponent/qui-badge';
 
@@ -47,8 +48,9 @@ export class QwcChappieChatHistory extends observeState(QwcHotReloadElement) {
         _chats: { state: true }
     };
 
-    constructor() { 
+    constructor() {
         super();
+        updateWhenLocaleChanges(this);
         this._chats = [];
         this.namespace = null;
         this.limit = -1;
@@ -82,7 +84,7 @@ export class QwcChappieChatHistory extends observeState(QwcHotReloadElement) {
             // TODO: Add more button
             
         }else{
-            return html`<div class="nothing">Nothing yet</div>`;
+            return html`<div class="nothing">${msg('Nothing yet', { id: 'quarkus-chappie-nothing-yet' })}</div>`;
         }
     }
     

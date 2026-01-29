@@ -1,5 +1,6 @@
 import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { JsonRpc } from 'jsonrpc';
+import { msg, str, updateWhenLocaleChanges } from 'localization';
 import '@qomponent/qui-code-block';
 import '@vaadin/combo-box';
 import { comboBoxRenderer } from '@vaadin/combo-box/lit.js';
@@ -123,8 +124,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         _navigateBack: {state: true}
     };
 
-    constructor() { 
+    constructor() {
         super();
+        updateWhenLocaleChanges(this);
         this._navigateBack = null;
         this._ragDefaults = {
             ragMaxResults: "4",
@@ -142,41 +144,65 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         
         this._allProviders = [
             {
-                name: "OpenAI", 
-                description: "Leading AI company that builds advanced language models like ChatGPT to power intelligent applications.", 
+                name: msg('OpenAI', { id: 'quarkus-chappie-provider-openai' }),
+                description: msg('Leading AI company that builds advanced language models like ChatGPT to power intelligent applications.', { id: 'quarkus-chappie-provider-openai-desc' }),
                 defaultModel: "gpt-5-mini",
                 defaultTemperature: "1",
                 defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
-            }, 
+            },
             {
-                name:"Ollama", 
-                description: "A platform for running and managing large language models locally with ease.",
+                name: msg('Ollama', { id: 'quarkus-chappie-provider-ollama' }),
+                description: msg('A platform for running and managing large language models locally with ease.', { id: 'quarkus-chappie-provider-ollama-desc' }),
                 defaultModel: "codellama",
                 defaultTemperature: "0.0",
                 defaultTimeout: "PT120S",
                 defaultBaseUrl: "http://localhost:11434/"
             },
             {
-                name:"Podman AI", 
-                description: "Integrates AI features into container workflows, enabling local, secure, and containerized AI model deployment.",
+                name: msg('Podman AI', { id: 'quarkus-chappie-provider-podman' }),
+                description: msg('Integrates AI features into container workflows, enabling local, secure, and containerized AI model deployment.', { id: 'quarkus-chappie-provider-podman-desc' }),
                 defaultModel: "llama3:instruct",
                 defaultTemperature: "0.2",
                 defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             },
             {
-                name: "OpenShift AI", 
-                description: "Red Hat’s enterprise AI platform, supporting OpenAI-compatible models with secure, scalable deployments.",
+                name: msg('OpenShift AI', { id: 'quarkus-chappie-provider-openshift' }),
+                description: msg('Red Hat\'s enterprise AI platform, supporting OpenAI-compatible models with secure, scalable deployments.', { id: 'quarkus-chappie-provider-openshift-desc' }),
                 defaultModel: "",
                 defaultTemperature: "0.2",
                 defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
             },
             {
-                name: "Generic OpenAI-Compatible", 
-                description: "Connect any OpenAI-compatible endpoint by providing your own base URL and API key.",
+                name: msg('Generic OpenAI-Compatible', { id: 'quarkus-chappie-provider-generic' }),
+                description: msg('Connect any OpenAI-compatible endpoint by providing your own base URL and API key.', { id: 'quarkus-chappie-provider-generic-desc' }),
                 defaultModel: "llama3:instruct",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
+                defaultBaseUrl: ""
+            },
+            {
+                name: msg('Gemini', { id: 'quarkus-chappie-provider-gemini' }),
+                description: msg('Google\'s advanced AI model that excels at multimodal tasks and complex reasoning.', { id: 'quarkus-chappie-provider-gemini-desc' }),
+                defaultModel: "gemini-2.5-flash",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
+                defaultBaseUrl: ""
+            },
+            {
+                name: msg('Anthropic', { id: 'quarkus-chappie-provider-anthropic' }),
+                description: msg('AI safety company that builds Claude, focused on reliable, interpretable, and steerable AI systems.', { id: 'quarkus-chappie-provider-anthropic-desc' }),
+                defaultModel: "CLAUDE_3_5_SONNET_20240620",
+                defaultTemperature: "0.2",
+                defaultTimeout: "PT120S",
+                defaultBaseUrl: ""
+            },
+            {
+                name: msg('WatsonX', { id: 'quarkus-chappie-provider-watsonx' }),
+                description: msg('IBM\'s enterprise AI and data platform for building, training, and deploying machine learning models.', { id: 'quarkus-chappie-provider-watsonx-desc' }),
+                defaultModel: "ibm/granite-4-h-small",
                 defaultTemperature: "0.2",
                 defaultTimeout: "PT120S",
                 defaultBaseUrl: ""
@@ -214,12 +240,12 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     _renderStep1(){
         return html`<div class="step1">
                     <div class="step1intro">
-                        <span>To use the AI Assistant in Quarkus Dev Mode, you need to configure an AI provider</span>
+                        <span>${msg('To use the AI Assistant in Quarkus Dev Mode, you need to configure an AI provider', { id: 'quarkus-chappie-config-intro' })}</span>
                         ${this._renderClearButton()}
                     </div>
-        
+
                     <vaadin-combo-box
-                        label="Choose provider"
+                        label="${msg('Choose provider', { id: 'quarkus-chappie-choose-provider' })}"
                         item-label-path="name"
                         item-value-path="name"
                         .items="${this._allProviders}"
@@ -230,10 +256,10 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                     ></vaadin-combo-box>
                     `;
     }
-    
+
     _renderClearButton(){
         if(assistantState.current.isConfigured){
-            return html`<vaadin-button theme="icon secondary error" title="Clear configuration" @click="${this._clearConfiguration}">
+            return html`<vaadin-button theme="icon secondary error" title="${msg('Clear configuration', { id: 'quarkus-chappie-clear-configuration' })}" @click="${this._clearConfiguration}">
                             <vaadin-icon icon="font-awesome-solid:trash"></vaadin-icon>
                         </vaadin-button>`;
         }
@@ -268,6 +294,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         }
     }
     
+    
+    
     _renderUnlistedPageLink(page){
         return html`<div class="unlistedLink" style="color:${page.color};" @click=${() => this._navigateToPage(page)}>
                         <vaadin-icon icon="${page.icon}"></vaadin-icon> <span>${page.title}</span>
@@ -282,12 +310,18 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     
     _renderLogo(name){
         if(!name && this._selectedProvider && this._selectedProvider.name)name = this._selectedProvider.name;
-        
         if(name){
-            let logo = "./" + name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
-            if(logo){
-                return html`<img src="${logo}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
-            }
+            // Dynamically construct the full logo URL to work from any page
+            const pathname = window.location.pathname;
+            const devUiIndex = pathname.indexOf('/dev-ui/');
+            const basePath = devUiIndex !== -1
+                ? pathname.substring(0, devUiIndex + '/dev-ui/'.length)
+                : '/dev-ui/';
+
+            const logoName = name.replace(/ /g, "_") + "_" + themeState.theme.name + ".svg";
+            const logoUrl = window.location.origin + basePath + "quarkus-chappie/" + logoName;
+
+            return html`<img src="${logoUrl}" height="45" @error="${(e) => e.target.style.display = 'none'}">`;
         }
     }
     
@@ -302,23 +336,29 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             return this._renderOpenShiftAI();
         } else if(this._selectedProvider.name === "Generic OpenAI-Compatible"){
             return this._renderGeneric();
-        }   
+        } else if(this._selectedProvider.name === "Gemini"){
+            return this._renderGemini();
+        } else if(this._selectedProvider.name === "Anthropic"){
+            return this._renderAnthropic();
+        } else if(this._selectedProvider.name === "WatsonX"){
+            return this._renderWatsonX();
+        }
     }
     
     _renderOpenAI(){
         return html`
             <div class="subText">
-                To use OpenAI you need to provide an <a href="https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key" target="_blank">OpenAI Api Key</a>
+                ${msg('To use OpenAI you need to provide an OpenAI Api Key', { id: 'quarkus-chappie-openai-instructions' })}
             </div>
-            
-            ${this._renderApiKeyInput('openai', true, "sk-....")}
+
+            ${this._renderApiKeyInput('openai', true, msg('sk-....', { id: 'quarkus-chappie-api-key-placeholder' }))}
             ${this._renderModelTemperatureAndTimeoutInput('openai')}
             ${this._renderCommonSettings()}
-            
-            <vaadin-button 
-                theme="primary" 
+
+            <vaadin-button
+                theme="primary"
                 @click="${this._saveOpenAIConfig}">
-                Save
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
             </vaadin-button>
         `;
     }
@@ -326,17 +366,17 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     _renderOllama(){
         return html`
             <div class="subText">
-                To use Ollama you need to install and run ollama. See <a href="https://ollama.com/download" target="_blank">ollama.com/download</a>
+                ${msg('To use Ollama you need to install and run ollama. See ollama.com/download', { id: 'quarkus-chappie-ollama-instructions' })}
             </div>
 
             ${this._renderBaseUrlInput('ollama', true)}
             ${this._renderModelTemperatureAndTimeoutInput('ollama')}
             ${this._renderCommonSettings()}
-            
-            <vaadin-button 
-                theme="primary" 
+
+            <vaadin-button
+                theme="primary"
                 @click="${this._saveOllamaConfig}">
-                Save
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
             </vaadin-button>
         `;
     }
@@ -344,69 +384,126 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     _renderPodmanAI(){
         return html`
             <div class="subText">
-                To use Podman AI you need to install and run podman. See <a href="https://podman-desktop.io/docs/installation" target="_blank">podman-desktop.io/docs/installation</a>
-                You also need to install the Podman AI Lab extension. See <a href="https://podman-desktop.io/docs/ai-lab/installing" target="_blank">podman-desktop.io/docs/ai-lab/installing</a>
+                ${msg('To use Podman AI you need to install and run podman. See podman-desktop.io/docs/installation', { id: 'quarkus-chappie-podman-instructions' })}
+                ${msg('You also need to install the Podman AI Lab extension. See podman-desktop.io/docs/ai-lab/installing', { id: 'quarkus-chappie-podman-extension' })}
             </div>
 
             ${this._renderBaseUrlInput('podman', true)}
             ${this._renderModelTemperatureAndTimeoutInput('podman')}
             ${this._renderCommonSettings()}
-            
-            <vaadin-button 
-                theme="primary" 
+
+            <vaadin-button
+                theme="primary"
                 @click="${this._savePodmanAIConfig}">
-                Save
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
             </vaadin-button>
             `;
     }
-    
+
     _renderOpenShiftAI(){
         return html`
             <div class="subText">
-                See <a href="https://www.redhat.com/en/products/ai/openshift-ai" target="_blank">redhat.com/en/products/ai/openshift-ai</a>
+                ${msg('See redhat.com/en/products/ai/openshift-ai', { id: 'quarkus-chappie-openshift-instructions' })}
             </div>
 
             ${this._renderBaseUrlInput('openshift', true)}
             ${this._renderApiKeyInput('openshift')}
             ${this._renderModelTemperatureAndTimeoutInput('openshift', true)}
             ${this._renderCommonSettings()}
-            
-            <vaadin-button 
-                theme="primary" 
+
+            <vaadin-button
+                theme="primary"
                 @click="${this._saveOpenShiftAIConfig}">
-                Save
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
             </vaadin-button>
         `;
     }
-    
+
     _renderGeneric(){
         return html`
-        
+
             ${this._renderBaseUrlInput('generic', true)}
             ${this._renderApiKeyInput('generic')}
             ${this._renderModelTemperatureAndTimeoutInput('generic', true)}
             ${this._renderCommonSettings()}
-            
-            <vaadin-button 
-                theme="primary" 
+
+            <vaadin-button
+                theme="primary"
                 @click="${this._saveGenericConfig}">
-                Save
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
             </vaadin-button>
         `;
     }
-    
+
+    _renderGemini(){
+        return html`
+            <div class="subText">
+                ${msg('To use Gemini you need to provide a Gemini API Key from Google AI Studio.', { id: 'quarkus-chappie-gemini-instructions' })}
+            </div>
+
+            ${this._renderApiKeyInput('gemini', true)}
+            ${this._renderModelTemperatureAndTimeoutInput('gemini')}
+            ${this._renderCommonSettings()}
+
+            <vaadin-button
+                theme="primary"
+                @click="${this._saveGeminiConfig}">
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
+            </vaadin-button>
+        `;
+    }
+
+    _renderAnthropic(){
+        return html`
+            <div class="subText">
+                ${msg('To use Anthropic you need to provide an Anthropic API Key.', { id: 'quarkus-chappie-anthropic-instructions' })}
+            </div>
+
+            ${this._renderApiKeyInput('anthropic', true)}
+            ${this._renderModelTemperatureAndTimeoutInput('anthropic')}
+            ${this._renderCommonSettings()}
+
+            <vaadin-button
+                theme="primary"
+                @click="${this._saveAnthropicConfig}">
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
+            </vaadin-button>
+        `;
+    }
+
+    _renderWatsonX(){
+        return html`
+            <div class="subText">
+                ${msg('To use WatsonX you need to provide an API Key and Project ID. Optionally provide either a Base URL or Cloud Region.', { id: 'quarkus-chappie-watsonx-instructions' })}
+            </div>
+
+            ${this._renderApiKeyInput('watsonx', true)}
+            ${this._renderProjectIdInput('watsonx', true)}
+            ${this._renderBaseUrlInput('watsonx')}
+            ${this._renderCloudRegionInput('watsonx')}
+            ${this._renderModelTemperatureAndTimeoutInput('watsonx')}
+            ${this._renderCommonSettings()}
+
+            <vaadin-button
+                theme="primary"
+                @click="${this._saveWatsonXConfig}">
+                ${msg('Save', { id: 'quarkus-chappie-save' })}
+            </vaadin-button>
+        `;
+    }
+
     _renderCommonSettings(){
-        return html`<vaadin-details summary="RAG">
+        return html`<vaadin-details summary="${msg('RAG', { id: 'quarkus-chappie-rag' })}">
                         <div class="rag">
                             ${this._renderRagSettings()}
                         </div>
                     </vaadin-details>
-                    <vaadin-details summary="Storage">
+                    <vaadin-details summary="${msg('Storage', { id: 'quarkus-chappie-storage' })}">
                         <div class="storage">
                             ${this._renderStoreSettings()}
                         </div>
                     </vaadin-details>
-                    <vaadin-details summary="MCP">
+                    <vaadin-details summary="${msg('MCP', { id: 'quarkus-chappie-mcp' })}">
                         <div class="mcp">
                             ${this._renderMCPSettings()}
                         </div>
@@ -415,15 +512,15 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _renderApiKeyInput(backend, required = false, placeholder = '') {
-        return html`<vaadin-password-field 
+        return html`<vaadin-password-field
                 id="${backend}-api-key"
                 .value="${this._loadedConfiguration?.apiKey ?? ''}"
                 placeholder="${placeholder}"
-                label="API Key"
+                label="${msg('API Key', { id: 'quarkus-chappie-api-key' })}"
                 ?required=${required}>
             </vaadin-password-field>`;
     }
-    
+
     _renderModelTemperatureAndTimeoutInput(backend, required = false){
         return html`<div class="tt">
                         ${this._renderModelInput(backend, required)}
@@ -431,11 +528,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                         ${this._renderTimeoutInput(backend)}
                     </div>`;
     }
-    
+
     _renderBaseUrlInput(backend, required = false){
-        return html`<vaadin-text-field 
-                id="${backend}-base-url" 
-                label="Base URL" 
+        return html`<vaadin-text-field
+                id="${backend}-base-url"
+                label="${msg('Base URL', { id: 'quarkus-chappie-base-url' })}"
                 placeholder="${this._selectedProvider.defaultBaseUrl}"
                 .value="${this._loadedConfiguration?.baseUrl ?? ''}"
                 ?required=${required}>
@@ -443,51 +540,68 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _renderModelInput(backend, required = false){
-        return html`<vaadin-text-field class="fullWidth" 
-                id="${backend}-model" 
-                label="Model" 
+        return html`<vaadin-text-field class="fullWidth"
+                id="${backend}-model"
+                label="${msg('Model', { id: 'quarkus-chappie-model' })}"
                 placeholder="${this._selectedProvider.defaultModel}"
                 .value="${this._loadedConfiguration?.model ?? ''}"
                 ?required=${required}>
             </vaadin-text-field>`;
     }
-    
+
     _renderTemperatureInput(backend){
         return html`<vaadin-number-field class="fullWidth"
                 id="${backend}-temperature"
-                label="Temperature" 
+                label="${msg('Temperature', { id: 'quarkus-chappie-temperature' })}"
                 placeholder="${this._selectedProvider.defaultTemperature}"
                 .value="${this._loadedConfiguration?.temperature ?? ''}"
                 min="0"
                 step="0.1">
-        
+
             </vaadin-number-field>`;
     }
-    
+
     _renderTimeoutInput(backend){
         return html`<vaadin-text-field class="fullWidth"
-                id="${backend}-timeout" 
-                label="Timeout" 
+                id="${backend}-timeout"
+                label="${msg('Timeout', { id: 'quarkus-chappie-timeout' })}"
                 placeholder="${this._selectedProvider.defaultTimeout}"
                 .value="${this._loadedConfiguration?.timeout ?? ''}">
             </vaadin-text-field>`;
     }
-    
+
+    _renderProjectIdInput(backend, required = false){
+        return html`<vaadin-text-field
+                id="${backend}-project-id"
+                label="${msg('Project ID', { id: 'quarkus-chappie-project-id' })}"
+                .value="${this._loadedConfiguration?.projectId ?? ''}"
+                ?required=${required}>
+            </vaadin-text-field>`;
+    }
+
+    _renderCloudRegionInput(backend){
+        return html`<vaadin-text-field
+                id="${backend}-cloud-region"
+                label="${msg('Cloud Region', { id: 'quarkus-chappie-cloud-region' })}"
+                .value="${this._loadedConfiguration?.cloudRegion ?? ''}">
+            </vaadin-text-field>`;
+    }
+
     _renderRagSettings(){
 
         let c = this._asBool(this._loadedConfiguration?.ragEnabled ?? this._ragDefaults?.ragEnabled);
 
         return html`
-            
+
             <vaadin-checkbox
                 id="rag-enabled"
                 .checked=${c}
-                label="Enable RAG">
+                label="${msg('Enable RAG', { id: 'quarkus-chappie-enable-rag' })}">
             </vaadin-checkbox>
-        
+
             <vaadin-number-field
-                id="rag-max-results" 
-                label="Max results" 
+                id="rag-max-results"
+                label="${msg('Max results', { id: 'quarkus-chappie-max-results' })}"
                 placeholder="${this._ragDefaults.ragMaxResults}"
                 .value="${this._loadedConfiguration?.ragMaxResults ?? ''}"
                 min="1"
@@ -495,8 +609,8 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </vaadin-number-field>
 
             <vaadin-number-field
-                id="rag-min-score" 
-                label="Min score" 
+                id="rag-min-score"
+                label="${msg('Min score', { id: 'quarkus-chappie-min-score' })}"
                 placeholder="${this._ragDefaults.ragMinScore}"
                 .value="${this._loadedConfiguration?.ragMinScore ?? ''}"
                 min="0"
@@ -504,31 +618,31 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </vaadin-number-field>
             `;
     }
-    
+
     _renderStoreSettings(){
-        return html`<vaadin-text-field 
-                id="store-max-messages" 
-                label="Max store messages" 
+        return html`<vaadin-text-field
+                id="store-max-messages"
+                label="${msg('Max store messages', { id: 'quarkus-chappie-max-store-messages' })}"
                 placeholder="${this._storeDefaults.storeMaxMessages}"
                 .value="${this._loadedConfiguration?.storeMaxMessages ?? ''}">
             </vaadin-text-field>`;
     }
-    
+
     _renderMCPSettings(){
-        
+
         let c = this._asBool(this._loadedConfiguration?.mcpEnabled ?? this._mcpDefaults?.mcpEnabled);
-        
+
         return html`
             <vaadin-checkbox
                 id="mcp-enabled"
                 .checked=${c}
-                label="Enable MCP (By default, if available, Dev MCP will be added)">
+                label="${msg('Enable MCP (By default, if available, Dev MCP will be added)', { id: 'quarkus-chappie-enable-mcp' })}">
             </vaadin-checkbox>
 
             <vaadin-text-field class="fullWidth"
-                id="extra-mcp-servers" 
-                label="More MCP Servers" 
-                placeholder="http://localhost:3001/mcp, https://my-mcp.example.com/mcp, stdio:npm exec @modelcontextprotocol/server-everything"
+                id="extra-mcp-servers"
+                label="${msg('More MCP Servers', { id: 'quarkus-chappie-more-mcp-servers' })}"
+                placeholder="${msg('http://localhost:3001/mcp, https://my-mcp.example.com/mcp, stdio:npm exec @modelcontextprotocol/server-everything', { id: 'quarkus-chappie-mcp-servers-placeholder' })}"
                 .value="${this._loadedConfiguration?.mcpservers ?? ''}">
             </vaadin-text-field>`;
     }
@@ -630,7 +744,15 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     _getApiKeyInput(selector){
         return this.shadowRoot.querySelector(selector)?.value;
     }
-    
+
+    _getProjectIdInput(selector){
+        return this.shadowRoot.querySelector(selector)?.value;
+    }
+
+    _getCloudRegionInput(selector){
+        return this.shadowRoot.querySelector(selector)?.value;
+    }
+
     _saveOpenAIConfig() {
         let apiKey = this._getApiKeyInput('#openai-api-key');
         if(apiKey){
@@ -648,7 +770,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 mcpExtraServers: this._getExtraMcpServersInput()
             });
         }else{
-            notifier.showErrorMessage("You need to provide an API Key");
+            notifier.showErrorMessage(msg('You need to provide an API Key', { id: 'quarkus-chappie-need-api-key' }));
         }
     }
     
@@ -670,7 +792,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     
     _savePodmanAIConfig() {
         let baseUrl = this.shadowRoot.querySelector('#podman-base-url')?.value;
-        
+
         if(baseUrl){
             this._storeConfiguration({
                 name: this._selectedProvider.name,
@@ -687,7 +809,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 mcpExtraServers: this._getExtraMcpServersInput()
             });
         }else{
-            notifier.showErrorMessage("You need to provide a base URL");
+            notifier.showErrorMessage(msg('You need to provide a base URL', { id: 'quarkus-chappie-need-base-url' }));
         }
     }
     
@@ -724,13 +846,81 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             mcpExtraServers: this._getExtraMcpServersInput()
         });
     }
-    
+
+    _saveGeminiConfig() {
+        let apiKey = this._getApiKeyInput('#gemini-api-key');
+        if(apiKey){
+            this._storeConfiguration({
+                name: this._selectedProvider.name,
+                apiKey,
+                model: this._getModelInput('#gemini-model'),
+                temperature: this._getTemperatureInput('#gemini-temperature'),
+                timeout: this._getTimeoutInput('#gemini-timeout'),
+                ragMaxResults: this._getRagMaxResultsInput(),
+                ragMinScore: this._getRagMinScoreInput(),
+                ragEnabled: this._getRagEnabled(),
+                storeMaxMessages: this._getStoreMaxMessagesInput(),
+                mcpEnabled: this._getMcpEnabled(),
+                mcpExtraServers: this._getExtraMcpServersInput()
+            });
+        }else{
+            notifier.showErrorMessage(msg('You need to provide an API Key', { id: 'quarkus-chappie-need-api-key' }));
+        }
+    }
+
+    _saveAnthropicConfig() {
+        let apiKey = this._getApiKeyInput('#anthropic-api-key');
+        if(apiKey){
+            this._storeConfiguration({
+                name: this._selectedProvider.name,
+                apiKey,
+                model: this._getModelInput('#anthropic-model'),
+                temperature: this._getTemperatureInput('#anthropic-temperature'),
+                timeout: this._getTimeoutInput('#anthropic-timeout'),
+                ragMaxResults: this._getRagMaxResultsInput(),
+                ragMinScore: this._getRagMinScoreInput(),
+                ragEnabled: this._getRagEnabled(),
+                storeMaxMessages: this._getStoreMaxMessagesInput(),
+                mcpEnabled: this._getMcpEnabled(),
+                mcpExtraServers: this._getExtraMcpServersInput()
+            });
+        }else{
+            notifier.showErrorMessage(msg('You need to provide an API Key', { id: 'quarkus-chappie-need-api-key' }));
+        }
+    }
+
+    _saveWatsonXConfig() {
+        let apiKey = this._getApiKeyInput('#watsonx-api-key');
+        let projectId = this._getProjectIdInput('#watsonx-project-id');
+
+        if(apiKey && projectId){
+            this._storeConfiguration({
+                name: this._selectedProvider.name,
+                apiKey,
+                projectId,
+                baseUrl: this._getBaseUrlInput('#watsonx-base-url'),
+                cloudRegion: this._getCloudRegionInput('#watsonx-cloud-region'),
+                model: this._getModelInput('#watsonx-model'),
+                temperature: this._getTemperatureInput('#watsonx-temperature'),
+                timeout: this._getTimeoutInput('#watsonx-timeout'),
+                ragMaxResults: this._getRagMaxResultsInput(),
+                ragMinScore: this._getRagMinScoreInput(),
+                ragEnabled: this._getRagEnabled(),
+                storeMaxMessages: this._getStoreMaxMessagesInput(),
+                mcpEnabled: this._getMcpEnabled(),
+                mcpExtraServers: this._getExtraMcpServersInput()
+            });
+        }else{
+            notifier.showErrorMessage(msg('You need to provide an API Key and Project ID', { id: 'quarkus-chappie-need-api-key-project-id' }));
+        }
+    }
+
     _storeConfiguration(params){
-        this.jsonRpc.storeConfiguration({configuration:params}).then(jsonRpcResponse => { 
+        this.jsonRpc.storeConfiguration({configuration:params}).then(jsonRpcResponse => {
             if(!jsonRpcResponse.result){
-                notifier.showErrorMessage("Provider details not saved. See log for details");
+                notifier.showErrorMessage(msg('Provider details not saved. See log for details', { id: 'quarkus-chappie-save-failed' }));
             }else{
-                notifier.showSuccessMessage("Provider details saved.");
+                notifier.showSuccessMessage(msg('Provider details saved.', { id: 'quarkus-chappie-saved' }));
                 assistantState.ready();
                 if(this._navigateBack){
                     this.routerController.navigate(this._navigateBack);
@@ -738,9 +928,9 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             }
         });
     }
-    
+
     _loadConfiguration(){
-        this.jsonRpc.loadConfiguration().then(jsonRpcResponse => { 
+        this.jsonRpc.loadConfiguration().then(jsonRpcResponse => {
             this._loadedConfiguration = jsonRpcResponse.result;
             if(this._loadedConfiguration && this._loadedConfiguration.name){
                 assistantState.ready();
@@ -752,16 +942,16 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             }
         });
     }
-    
+
     _clearConfiguration(){
-        this.jsonRpc.clearConfiguration().then(jsonRpcResponse => { 
+        this.jsonRpc.clearConfiguration().then(jsonRpcResponse => {
             if(!jsonRpcResponse.result){
-                notifier.showErrorMessage("Provider details not cleared. See log for details");
+                notifier.showErrorMessage(msg('Provider details not cleared. See log for details', { id: 'quarkus-chappie-clear-failed' }));
             }else {
                 assistantState.available();
                 this._selectedProvider = null;
                 this._loadedConfiguration = null;
-                notifier.showSuccessMessage("Provider details cleared.");
+                notifier.showSuccessMessage(msg('Provider details cleared.', { id: 'quarkus-chappie-cleared' }));
             }
         });
     }

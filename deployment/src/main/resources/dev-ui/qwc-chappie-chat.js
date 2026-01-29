@@ -2,6 +2,7 @@ import { QwcHotReloadElement, html, css} from 'qwc-hot-reload-element';
 import { JsonRpc } from 'jsonrpc';
 import { assistantState } from 'assistant-state';
 import { observeState } from 'lit-element-state';
+import { msg, str, updateWhenLocaleChanges } from 'localization';
 import 'qwc-no-data';
 import '@vaadin/message-input';
 import '@vaadin/message-list';
@@ -110,8 +111,9 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         
     };
 
-    constructor() { 
+    constructor() {
         super();
+        updateWhenLocaleChanges(this);
         this._messages = [];
         this._inputIsBlocked = false;
         this._heading = null;
@@ -164,11 +166,11 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                                 <div class="buttons">
                                     <vaadin-button theme="tertiary error" @click=${this._deleteChat}>
                                         <vaadin-icon class="buttonIcon" icon="font-awesome-solid:trash-can" slot="prefix"></vaadin-icon>
-                                        Delete
+                                        ${msg('Delete', { id: 'quarkus-chappie-delete' })}
                                     </vaadin-button>
                                     <vaadin-button theme="tertiary" @click=${this._startNewChat}>
                                         <vaadin-icon class="buttonIcon" icon="font-awesome-regular:pen-to-square" slot="prefix"></vaadin-icon>
-                                        New chat
+                                        ${msg('New chat', { id: 'quarkus-chappie-new-chat' })}
                                     </vaadin-button>
                                     ${this._renderHistoryButton()}
                                 </div>
@@ -185,7 +187,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     _renderHistoryButton(){
         return html`<vaadin-button id="history" theme="tertiary">
                                         <vaadin-icon class="buttonIcon" icon="font-awesome-solid:clock-rotate-left" slot="prefix"></vaadin-icon>
-                                        History
+                                        ${msg('History', { id: 'quarkus-chappie-history' })}
                                     </vaadin-button>
                                     <vaadin-popover
                                         for="history"
@@ -200,7 +202,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     
     _renderHeading(){
         if(this._heading){
-            return html`<span class="headerText" title="Memory Id: ${this._memoryId}">${this._heading}</span>`;
+            return html`<span class="headerText" title="${msg('Memory Id: ', { id: 'quarkus-chappie-memory-id' })}${this._memoryId}">${this._heading}</span>`;
         }else{
             return html`<l-ring size="26" stroke="2" color="var(--lumo-contrast-25pct)" class="headerText"></l-ring>`;
         }
@@ -230,18 +232,18 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     _renderNewChat(){
         return html`<div class="buttonsNew">${this._renderHistoryButton()}</div>
                     <div class="inputNew">
-                        <h1 class="headerNew">Welcome to the Assistant Chat</h2>
+                        <h1 class="headerNew">${msg('Welcome to the Assistant Chat', { id: 'quarkus-chappie-welcome' })}</h2>
                         <div style="width:100%;"><vaadin-message-input class="messageInput" @submit="${this._handleSubmit}"></vaadin-message-input></div>
                     </div>
             `;
     }
     
     _renderUnconfigured(){
-        return html`<qwc-no-data message="Assistant is not configured.">
+        return html`<qwc-no-data message="${msg('Assistant is not configured.', { id: 'quarkus-chappie-not-configured' })}">
                     ${this._renderConfigureNowButton()}
                 </qwc-no-data>`;
     }
-    
+
     _getCurrentMessages(){
         this._messages = [];
         document.body.style.cursor = 'progress'; 
@@ -252,10 +254,10 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     _handleSubmit(event) {
-        document.body.style.cursor = 'progress'; 
+        document.body.style.cursor = 'progress';
         let m = event.detail.value;
         this._addUserMessage(m);
-        this._addAssistantMessage("Thinking ...");
+        this._addAssistantMessage(msg('Thinking ...', { id: 'quarkus-chappie-thinking' }));
         this._inputIsBlocked = true;
         this._scrollToBottom();
         this.jsonRpc.chat({message:m}).then(jsonRpcResponse => {
@@ -291,13 +293,13 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             
             
             if(err.error.message){
-                this._addErrorMessage(err.error.message + ". See the Assistant log for details");
+                this._addErrorMessage(err.error.message + msg('. See the Assistant log for details', { id: 'quarkus-chappie-error-see-log-suffix' }));
             }else {
                 this._addServerErrorMessage();
             }
         });
     }
-    
+
     _handleChatMessageResponse(jsonRpcResponse){
         let r = jsonRpcResponse?.result;
         if(r){
@@ -347,7 +349,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     
     _getActionLabel(action){
         if(action){
-            return "<br><br><div class='tool' title='Suggested MCP Tool'>⚒️ " + action + "</div>";
+            return "<br><br><div class='tool' title='" + msg('Suggested MCP Tool', { id: 'quarkus-chappie-suggested-mcp-tool' }) + "'>⚒️ " + action + "</div>";
         }else{
             return "";
         }
@@ -390,7 +392,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     _renderConfigureNowButton(){
         return html`<vaadin-button theme="tertiary" @click=${this._configureNow}>
                         <vaadin-icon icon="font-awesome-solid:gears"></vaadin-icon>
-                        Configure now
+                        ${msg('Configure now', { id: 'quarkus-chappie-configure-now' })}
                     </vaadin-button>`;
     }
     
@@ -399,21 +401,21 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     _addUserMessage(message){
-        this._addToMessages(message, "You", 6);
+        this._addToMessages(message, msg('You', { id: 'quarkus-chappie-you' }), 6);
     }
-    
+
     _addAssistantMessage(message){
-        this._addToMessages(message, "Assistant", 5);
+        this._addToMessages(message, msg('Assistant', { id: 'quarkus-chappie-assistant' }), 5);
     }
-    
+
     _addServerErrorMessage(){
-        this._addErrorMessage("An error occured - see the Assistant log for details");
+        this._addErrorMessage(msg('An error occured - see the Assistant log for details', { id: 'quarkus-chappie-error-see-log' }));
     }
-    
+
     _addErrorMessage(message){
         message = "<span style='color:red'>" + message + "</span>";
-        this._addToMessages(message, "Assistant", 5);
-        if(!this._heading)this._heading = "Error";
+        this._addToMessages(message, msg('Assistant', { id: 'quarkus-chappie-assistant' }), 5);
+        if(!this._heading)this._heading = msg('Error', { id: 'quarkus-chappie-error' });
     }
     
     _addToMessages(message, user, userColorIndex){
