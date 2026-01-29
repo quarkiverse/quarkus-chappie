@@ -20,17 +20,19 @@ public class ChappieRecorder {
             String devMcpPath) {
         Config config = ConfigProvider.getConfig();
         Map<String, String> chappieRAGProperties = new HashMap<>();
-        configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.db-kind");
-        configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.jdbc.url");
-        configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.username");
-        configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.password");
-        configMap(config, chappieRAGProperties, "quarkus.datasource.chappie.active");
+
+        // Read RAG datasource config from chappie.rag.* keys
+        configMap(config, chappieRAGProperties, "chappie.rag.db-kind", "quarkus.datasource.chappie.db-kind");
+        configMap(config, chappieRAGProperties, "chappie.rag.jdbc.url", "quarkus.datasource.chappie.jdbc.url");
+        configMap(config, chappieRAGProperties, "chappie.rag.username", "quarkus.datasource.chappie.username");
+        configMap(config, chappieRAGProperties, "chappie.rag.password", "quarkus.datasource.chappie.password");
+        configMap(config, chappieRAGProperties, "chappie.rag.active", "quarkus.datasource.chappie.active");
 
         ChappieServerManager chappieServerManager = beanContainer.beanInstance(ChappieServerManager.class);
         return new RuntimeValue(chappieServerManager.init(chappieServerVersion, assistant, chappieRAGProperties, devMcpPath));
     }
 
-    void configMap(Config config, Map<String, String> map, String key) {
-        map.put(key, config.getValue(key, String.class));
+    void configMap(Config config, Map<String, String> map, String sourceKey, String targetKey) {
+        config.getOptionalValue(sourceKey, String.class).ifPresent(value -> map.put(targetKey, value));
     }
 }
