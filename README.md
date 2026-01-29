@@ -20,6 +20,7 @@ extension to you project, example in maven:
 | 1.3.x           | 3.26.1+         |
 | 1.4.x           | 3.28.3+         |
 | 1.5.x           | 3.29.0+         |
+| 1.8.x           | 3.31.0+         |
 
 
 Chappie is a Dev Mode only extension, so this does not add anything to your production application.

@@ -310,7 +310,7 @@ public class ChappieServerManager {
             Path chappieServer = getChappieServer(this.version);
 
             List<String> command = new ArrayList<>();
-            command.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+            command.add(getJavaExecutable());
             for (Map.Entry<String, String> es : chappieServerArguments.entrySet()) {
                 command.add("-D" + es.getKey() + "=" + es.getValue());
             }
@@ -432,6 +432,15 @@ public class ChappieServerManager {
 
     private Path getChappieBaseDir(String version) {
         return configDir.resolve(version);
+    }
+
+    private String getJavaExecutable() {
+        String javaExecutableName = "java";
+        String osName = System.getProperty("os.name");
+        if (osName != null && osName.toLowerCase().contains("windows")) {
+            javaExecutableName = "java.exe";
+        }
+        return Paths.get(System.getProperty("java.home"), "bin", javaExecutableName).toString();
     }
 
     private int findAvailablePort(int startPort) {
