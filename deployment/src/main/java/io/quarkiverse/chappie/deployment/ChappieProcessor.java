@@ -145,12 +145,12 @@ public class ChappieProcessor {
             if (chappieConsoleContext == null) {
                 chappieConsoleContext = ConsoleStateManager.INSTANCE.createContext("Assistant");
             }
-
-            Collections.sort(assistantConsoleBuildItems, Comparator.comparing(AssistantConsoleBuildItem::getDescription));
+            List<AssistantConsoleBuildItem> copyAssistantConsoleBuildItems = new ArrayList<>(assistantConsoleBuildItems);
+            Collections.sort(copyAssistantConsoleBuildItems, Comparator.comparing(AssistantConsoleBuildItem::getDescription));
 
             Vertx vertx = Vertx.vertx();
             List<ConsoleCommand> consoleCommands = new ArrayList<>();
-            for (AssistantConsoleBuildItem assistantConsoleBuildItem : assistantConsoleBuildItems) {
+            for (AssistantConsoleBuildItem assistantConsoleBuildItem : copyAssistantConsoleBuildItems) {
                 if (assistantConsoleBuildItem.getConsoleCommand() != null) {
                     consoleCommands.add(assistantConsoleBuildItem.getConsoleCommand());
                 } else {
