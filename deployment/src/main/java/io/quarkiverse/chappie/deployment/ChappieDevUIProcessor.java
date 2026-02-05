@@ -52,7 +52,6 @@ class ChappieDevUIProcessor {
 
         chatPage.addPage(Page.assistantPageBuilder()
                 .title("Chat")
-                .icon("font-awesome-solid:comment-dots")
                 .componentLink("qwc-chappie-chat.js"));
 
         menuPageProducer.produce(chatPage);
@@ -124,7 +123,7 @@ class ChappieDevUIProcessor {
     }
 
     @BuildStep
-    JsonRPCProvidersBuildItem createJsonRPCServiceForCache() {
+    JsonRPCProvidersBuildItem createChappieJsonRPCService() {
         return new JsonRPCProvidersBuildItem(ChappieJsonRpcService.class);
     }
 }
