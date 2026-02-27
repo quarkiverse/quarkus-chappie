@@ -64,7 +64,10 @@ public class ChappieProcessor {
             BeanContainerBuildItem beanContainer,
             ExtensionVersionBuildItem extensionVersionBuildItem,
             CurateOutcomeBuildItem curateOutcomeBuildItem,
-            NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem) {
+            NonApplicationRootPathBuildItem nonApplicationRootPathBuildItem,
+            List<DevServicesResultBuildItem> devServices) {
+        // Note: devServices parameter ensures DevServices containers are started before this recorder runs.
+        // This fixes a race condition where the RAG database config might not be available yet.
 
         String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
