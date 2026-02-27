@@ -351,7 +351,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 ${msg('To use OpenAI you need to provide an OpenAI Api Key', { id: 'quarkus-chappie-openai-instructions' })}
             </div>
 
-            ${this._renderApiKeyInput('openai', true, msg('sk-....', { id: 'quarkus-chappie-api-key-placeholder' }))}
+            ${this._renderApiKeyInput('openai', true, msg('sk-....', { id: 'quarkus-chappie-api-key-placeholder' }), 'OPENAI_API_KEY')}
             ${this._renderModelTemperatureAndTimeoutInput('openai')}
             ${this._renderCommonSettings()}
 
@@ -407,7 +407,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
             </div>
 
             ${this._renderBaseUrlInput('openshift', true)}
-            ${this._renderApiKeyInput('openshift')}
+            ${this._renderApiKeyInput('openshift', false, '', 'OPENSHIFT_API_KEY')}
             ${this._renderModelTemperatureAndTimeoutInput('openshift', true)}
             ${this._renderCommonSettings()}
 
@@ -423,7 +423,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         return html`
 
             ${this._renderBaseUrlInput('generic', true)}
-            ${this._renderApiKeyInput('generic')}
+            ${this._renderApiKeyInput('generic', false, '', 'API_KEY')}
             ${this._renderModelTemperatureAndTimeoutInput('generic', true)}
             ${this._renderCommonSettings()}
 
@@ -441,7 +441,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 ${msg('To use Gemini you need to provide a Gemini API Key from Google AI Studio.', { id: 'quarkus-chappie-gemini-instructions' })}
             </div>
 
-            ${this._renderApiKeyInput('gemini', true)}
+            ${this._renderApiKeyInput('gemini', true, '', 'GEMINI_API_KEY')}
             ${this._renderModelTemperatureAndTimeoutInput('gemini')}
             ${this._renderCommonSettings()}
 
@@ -459,7 +459,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 ${msg('To use Anthropic you need to provide an Anthropic API Key.', { id: 'quarkus-chappie-anthropic-instructions' })}
             </div>
 
-            ${this._renderApiKeyInput('anthropic', true)}
+            ${this._renderApiKeyInput('anthropic', true, '', 'ANTHROPIC_API_KEY')}
             ${this._renderModelTemperatureAndTimeoutInput('anthropic')}
             ${this._renderCommonSettings()}
 
@@ -477,7 +477,7 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                 ${msg('To use WatsonX you need to provide an API Key and Project ID. Optionally provide either a Base URL or Cloud Region.', { id: 'quarkus-chappie-watsonx-instructions' })}
             </div>
 
-            ${this._renderApiKeyInput('watsonx', true)}
+            ${this._renderApiKeyInput('watsonx', true, '', 'WATSONX_API_KEY')}
             ${this._renderProjectIdInput('watsonx', true)}
             ${this._renderBaseUrlInput('watsonx')}
             ${this._renderCloudRegionInput('watsonx')}
@@ -511,14 +511,42 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
                     `;
     }
     
-    _renderApiKeyInput(backend, required = false, placeholder = '') {
-        return html`<vaadin-password-field
-                id="${backend}-api-key"
-                .value="${this._loadedConfiguration?.apiKey ?? ''}"
-                placeholder="${placeholder}"
-                label="${msg('API Key', { id: 'quarkus-chappie-api-key' })}"
-                ?required=${required}>
-            </vaadin-password-field>`;
+    _renderApiKeyInput(backend, required = false, placeholder = '', defaultEnvVar = 'OPENAI_API_KEY') {
+        const useEnvVar = this._loadedConfiguration?.apiKeyFromEnv === 'true' || this._loadedConfiguration?.apiKeyFromEnv === true;
+        return html`
+            <div class="api-key-container">
+                <vaadin-checkbox
+                    id="${backend}-use-env-var"
+                    .checked="${useEnvVar}"
+                    @change="${(e) => this._toggleEnvVarMode(backend, e.target.checked)}"
+                    label="${msg('Use environment variable', { id: 'quarkus-chappie-use-env-var' })}">
+                </vaadin-checkbox>
+                ${useEnvVar ? html`
+                    <vaadin-text-field
+                        id="${backend}-api-key-env"
+                        .value="${this._loadedConfiguration?.apiKeyEnvVar ?? defaultEnvVar}"
+                        label="${msg('Environment Variable Name', { id: 'quarkus-chappie-env-var-name' })}"
+                        placeholder="${defaultEnvVar}"
+                        ?required=${required}>
+                    </vaadin-text-field>
+                ` : html`
+                    <vaadin-password-field
+                        id="${backend}-api-key"
+                        .value="${this._loadedConfiguration?.apiKey ?? ''}"
+                        placeholder="${placeholder}"
+                        label="${msg('API Key', { id: 'quarkus-chappie-api-key' })}"
+                        ?required=${required}>
+                    </vaadin-password-field>
+                `}
+            </div>`;
+    }
+
+    _toggleEnvVarMode(backend, useEnvVar) {
+        if (!this._loadedConfiguration) {
+            this._loadedConfiguration = {};
+        }
+        this._loadedConfiguration.apiKeyFromEnv = useEnvVar;
+        this.requestUpdate();
     }
 
     _renderModelTemperatureAndTimeoutInput(backend, required = false){
@@ -745,6 +773,32 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
         return this.shadowRoot.querySelector(selector)?.value;
     }
 
+    _isUsingEnvVar(backend){
+        return this.shadowRoot.querySelector(`#${backend}-use-env-var`)?.checked ?? false;
+    }
+
+    _getApiKeyEnvVar(backend){
+        return this.shadowRoot.querySelector(`#${backend}-api-key-env`)?.value;
+    }
+
+    _getApiKeyConfig(backend, defaultEnvVar = 'OPENAI_API_KEY'){
+        const useEnvVar = this._isUsingEnvVar(backend);
+        if (useEnvVar) {
+            const envVar = this._getApiKeyEnvVar(backend) || defaultEnvVar;
+            return {
+                apiKeyFromEnv: 'true',
+                apiKeyEnvVar: envVar,
+                apiKey: null
+            };
+        } else {
+            return {
+                apiKeyFromEnv: 'false',
+                apiKeyEnvVar: null,
+                apiKey: this._getApiKeyInput(`#${backend}-api-key`)
+            };
+        }
+    }
+
     _getProjectIdInput(selector){
         return this.shadowRoot.querySelector(selector)?.value;
     }
@@ -754,11 +808,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
 
     _saveOpenAIConfig() {
-        let apiKey = this._getApiKeyInput('#openai-api-key');
-        if(apiKey){
+        const apiKeyConfig = this._getApiKeyConfig('openai', 'OPENAI_API_KEY');
+        if(apiKeyConfig.apiKey || apiKeyConfig.apiKeyFromEnv === 'true'){
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                apiKey,
+                ...apiKeyConfig,
                 model: this._getModelInput('#openai-model'),
                 temperature: this._getTemperatureInput('#openai-temperature'),
                 timeout: this._getTimeoutInput('#openai-timeout'),
@@ -814,10 +868,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
     
     _saveOpenShiftAIConfig() {
+        const apiKeyConfig = this._getApiKeyConfig('openshift', 'OPENSHIFT_API_KEY');
         this._storeConfiguration({
             name: this._selectedProvider.name,
             baseUrl: this._getBaseUrlInput('#openshift-base-url'),
-            apiKey: this._getApiKeyInput('#openshift-api-key'),
+            ...apiKeyConfig,
             model: this._getModelInput('#openshift-model'),
             temperature: this._getTemperatureInput('#openshift-temperature'),
             timeout: this._getTimeoutInput('#openshift-timeout'),
@@ -831,10 +886,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
 
     _saveGenericConfig() {
+        const apiKeyConfig = this._getApiKeyConfig('generic', 'API_KEY');
         this._storeConfiguration({
             name: this._selectedProvider.name,
             baseUrl: this._getBaseUrlInput('#generic-base-url'),
-            apiKey: this._getApiKeyInput('#generic-api-key'),
+            ...apiKeyConfig,
             model: this._getModelInput('#generic-model'),
             temperature: this._getTemperatureInput('#generic-temperature'),
             timeout: this._getTimeoutInput('#generic-timeout'),
@@ -848,11 +904,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
 
     _saveGeminiConfig() {
-        let apiKey = this._getApiKeyInput('#gemini-api-key');
-        if(apiKey){
+        const apiKeyConfig = this._getApiKeyConfig('gemini', 'GEMINI_API_KEY');
+        if(apiKeyConfig.apiKey || apiKeyConfig.apiKeyFromEnv === 'true'){
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                apiKey,
+                ...apiKeyConfig,
                 model: this._getModelInput('#gemini-model'),
                 temperature: this._getTemperatureInput('#gemini-temperature'),
                 timeout: this._getTimeoutInput('#gemini-timeout'),
@@ -869,11 +925,11 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
 
     _saveAnthropicConfig() {
-        let apiKey = this._getApiKeyInput('#anthropic-api-key');
-        if(apiKey){
+        const apiKeyConfig = this._getApiKeyConfig('anthropic', 'ANTHROPIC_API_KEY');
+        if(apiKeyConfig.apiKey || apiKeyConfig.apiKeyFromEnv === 'true'){
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                apiKey,
+                ...apiKeyConfig,
                 model: this._getModelInput('#anthropic-model'),
                 temperature: this._getTemperatureInput('#anthropic-temperature'),
                 timeout: this._getTimeoutInput('#anthropic-timeout'),
@@ -890,13 +946,13 @@ export class QwcChappieConfigure extends observeState(QwcHotReloadElement) {
     }
 
     _saveWatsonXConfig() {
-        let apiKey = this._getApiKeyInput('#watsonx-api-key');
+        const apiKeyConfig = this._getApiKeyConfig('watsonx', 'WATSONX_API_KEY');
         let projectId = this._getProjectIdInput('#watsonx-project-id');
 
-        if(apiKey && projectId){
+        if((apiKeyConfig.apiKey || apiKeyConfig.apiKeyFromEnv === 'true') && projectId){
             this._storeConfiguration({
                 name: this._selectedProvider.name,
-                apiKey,
+                ...apiKeyConfig,
                 projectId,
                 baseUrl: this._getBaseUrlInput('#watsonx-base-url'),
                 cloudRegion: this._getCloudRegionInput('#watsonx-cloud-region'),

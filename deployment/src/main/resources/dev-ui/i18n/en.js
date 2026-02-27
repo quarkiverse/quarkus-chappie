@@ -63,6 +63,8 @@ export const templates = {
 
     // Form labels
     'quarkus-chappie-api-key': 'API Key',
+    'quarkus-chappie-use-env-var': 'Use environment variable',
+    'quarkus-chappie-env-var-name': 'Environment Variable Name',
     'quarkus-chappie-base-url': 'Base URL',
     'quarkus-chappie-model': 'Model',
     'quarkus-chappie-temperature': 'Temperature',

@@ -318,7 +318,7 @@ public class ChappieServerManager {
             command.add("-jar");
             command.add(chappieServer.toString());
 
-            LOG.debug("Starting Chappie Server with command: " + String.join(" ", command));
+            LOG.debug("Starting Chappie Server with command: " + maskSensitiveValues(command));
             ProcessBuilder processBuilder = new ProcessBuilder(command)
                     .redirectOutput(logFile.toFile())
                     .redirectErrorStream(true);
@@ -501,7 +501,7 @@ public class ChappieServerManager {
                 if (baseUrl != null && !baseUrl.isBlank()) {
                     properties.put("chappie.openai.base-url", baseUrl);
                 }
-                String apiKey = providerProperties.getProperty("apiKey");
+                String apiKey = resolveApiKey(providerProperties);
                 if (apiKey != null && !apiKey.isBlank()) {
                     properties.put("chappie.openai.api-key", apiKey);
                 }
@@ -519,7 +519,7 @@ public class ChappieServerManager {
                     properties.put("chappie.ollama.model-name", model);
                 }
             } else if (isGemini(provider)) {
-                String apiKey = providerProperties.getProperty("apiKey");
+                String apiKey = resolveApiKey(providerProperties);
                 if (apiKey != null && !apiKey.isBlank()) {
                     properties.put("chappie.gemini.api-key", apiKey);
                 }
@@ -528,7 +528,7 @@ public class ChappieServerManager {
                     properties.put("chappie.gemini.model-name", model);
                 }
             } else if (isAnthropic(provider)) {
-                String apiKey = providerProperties.getProperty("apiKey");
+                String apiKey = resolveApiKey(providerProperties);
                 if (apiKey != null && !apiKey.isBlank()) {
                     properties.put("chappie.anthropic.api-key", apiKey);
                 }
@@ -537,7 +537,7 @@ public class ChappieServerManager {
                     properties.put("chappie.anthropic.model-name", model);
                 }
             } else if (isWatsonX(provider)) {
-                String apiKey = providerProperties.getProperty("apiKey");
+                String apiKey = resolveApiKey(providerProperties);
                 if (apiKey != null && !apiKey.isBlank()) {
                     properties.put("chappie.watsonx.api-key", apiKey);
                 }
@@ -635,6 +635,64 @@ public class ChappieServerManager {
         String host = c.getValue("quarkus.http.host", String.class);
         int port = c.getValue("quarkus.http.port", Integer.class);
         return "http://" + host + ":" + port + this.devMcpPath;
+    }
+
+    /**
+     * Resolves the API key from either a direct value or an environment variable.
+     * If apiKeyFromEnv is "true", reads the value from the environment variable specified in apiKeyEnvVar.
+     * Otherwise, returns the direct apiKey value.
+     */
+    private String resolveApiKey(Properties providerProperties) {
+        String apiKeyFromEnv = providerProperties.getProperty("apiKeyFromEnv");
+        if ("true".equalsIgnoreCase(apiKeyFromEnv)) {
+            String envVarName = providerProperties.getProperty("apiKeyEnvVar");
+            if (envVarName != null && !envVarName.isBlank()) {
+                String envValue = System.getenv(envVarName);
+                if (envValue == null || envValue.isBlank()) {
+                    LOG.warnf("Environment variable '%s' is not set or is empty", envVarName);
+                    return null;
+                }
+                LOG.debugf("Using API key from environment variable: %s", envVarName);
+                return envValue;
+            }
+            return null;
+        }
+        return providerProperties.getProperty("apiKey");
+    }
+
+    /**
+     * Masks sensitive values (API keys, passwords, secrets) in command arguments for safe logging.
+     */
+    private String maskSensitiveValues(List<String> command) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < command.size(); i++) {
+            if (i > 0) {
+                sb.append(" ");
+            }
+            String arg = command.get(i);
+            if (arg.startsWith("-D") && containsSensitiveKey(arg)) {
+                // Mask the value part after the '='
+                int eqIndex = arg.indexOf('=');
+                if (eqIndex > 0) {
+                    sb.append(arg.substring(0, eqIndex + 1)).append("****");
+                } else {
+                    sb.append(arg);
+                }
+            } else {
+                sb.append(arg);
+            }
+        }
+        return sb.toString();
+    }
+
+    private boolean containsSensitiveKey(String arg) {
+        String lowerArg = arg.toLowerCase();
+        return lowerArg.contains("api-key") ||
+                lowerArg.contains("apikey") ||
+                lowerArg.contains("password") ||
+                lowerArg.contains("secret") ||
+                lowerArg.contains("token") ||
+                lowerArg.contains("credential");
     }
 
     private final Path configDir = Paths.get(System.getProperty("user.home"), ".quarkus", "chappie");
