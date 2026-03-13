@@ -27,6 +27,9 @@ public class ChappieHotReplacementSetup implements HotReplacementSetup {
 
     @Override
     public void close() {
+        if (currentProcess == null) {
+            return;
+        }
         try {
             currentProcess.destroy();
         } catch (Exception e) {
