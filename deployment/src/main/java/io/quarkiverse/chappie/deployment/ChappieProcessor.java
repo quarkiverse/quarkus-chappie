@@ -253,8 +253,8 @@ public class ChappieProcessor {
             if (version.equals("latest")) {
                 throw new RuntimeException("Could not start Chappie RAG Dev Service using Quarkus version latest", t);
             }
-            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s. Falling back to latest version",
-                    version);
+            LOG.warnf(t, "Could not start Chappie RAG Dev Service using image %s. Falling back to latest version",
+                    getImage(version));
             return createContainer("latest");
         }
     }
