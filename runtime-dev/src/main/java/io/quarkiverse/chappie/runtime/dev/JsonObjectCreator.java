@@ -1,5 +1,7 @@
 package io.quarkiverse.chappie.runtime.dev;
 
+import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
+
 import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.List;
@@ -128,7 +130,7 @@ public class JsonObjectCreator {
      * TODO: We can cache this
      */
     private static String buildResponsePrompt(Type answerType) {
-        JsonNode jsonSchema = SCHEMA_GENERATOR.generateSchema(answerType);
+        JsonNode jsonSchema = SCHEMA_GENERATOR.generateSchema(ChappieEnvelope.class, answerType);
 
         return """
                 RESPONSE FORMAT (strict):
@@ -137,16 +139,18 @@ public class JsonObjectCreator {
                     - Only use the contents in the [USER PROMPT]
                     - Constraints: ≤ 60 chars, 4–9 words, Title Case, no quotes/backticks, no trailing punctuation.
                     - Make it specific (action + topic), e.g., "Fix WebSocket Reconnect in Quarkus".
-                - "answer": Must match and validates against the following JSON Schema (Draft 2020-12). Do not include extra fields.
-                    - JSON Scheme:
-                        %s
+                - "answer": answer to the user request
+
+                The response must match and validate against the following JSON Schema (Draft 2020-12). Do not include extra fields.
+                - JSON Schema:
+                    %s
                 """
                 .formatted(jsonSchema.toString());
     }
 
     private static final SchemaGenerator SCHEMA_GENERATOR = new SchemaGenerator(
             new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12)
-                    .with(new JacksonModule())
+                    .with(new JacksonModule(RESPECT_JSONPROPERTY_REQUIRED))
                     .without(Option.FIELDS_DERIVED_FROM_ARGUMENTFREE_METHODS)
                     .without(Option.GETTER_METHODS)
                     .without(Option.NONSTATIC_NONVOID_NONGETTER_METHODS)
