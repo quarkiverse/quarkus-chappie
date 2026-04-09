@@ -21,6 +21,8 @@ import io.quarkus.logging.Log;
 
 public class ChappieAssistant implements Assistant {
 
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+
     private String baseUrl = null;
     private String memoryId = null;
     private String title = null;
@@ -138,8 +140,11 @@ public class ChappieAssistant implements Assistant {
                     .header("Accept", "application/json")
                     .build();
 
-            HttpClient client = HttpClient.newHttpClient();
-            client.sendAsync(r, HttpResponse.BodyHandlers.ofString());
+            HTTP_CLIENT.sendAsync(r, HttpResponse.BodyHandlers.ofString())
+                    .exceptionally(ex -> {
+                        Log.error("Failed to delete chat " + memoryId, ex);
+                        return null;
+                    });
         }
     }
 
@@ -150,7 +155,7 @@ public class ChappieAssistant implements Assistant {
             if (maxResults != null) {
                 params.put("maxResults", maxResults);
             }
-            if (extension == null) {
+            if (extension != null) {
                 params.put("extension", extension);
             }
             String jsonPayload = JsonObjectCreator.toJsonString(params);
@@ -200,9 +205,7 @@ public class ChappieAssistant implements Assistant {
     }
 
     private <T> CompletionStage<T> getAny(HttpRequest request, Class<T> responseType, boolean unwrap) {
-        HttpClient client = HttpClient.newHttpClient();
-
-        return (CompletableFuture<T>) client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return (CompletableFuture<T>) HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply((response) -> {
                     int status = response.statusCode();
                     if (status == 200) {
@@ -225,16 +228,13 @@ public class ChappieAssistant implements Assistant {
                             return Map.of(this.memoryId, envelope);
                         }
                     } else {
-                        // TODO: Can we get more details ?
-                        throw new RuntimeException("Failed with HTTP error code : " + status);
+                        throw new RuntimeException("Failed with HTTP " + status + ": " + response.body());
                     }
                 });
     }
 
     private CompletionStage<Map> getObject(HttpRequest request) {
-        HttpClient client = HttpClient.newHttpClient();
-
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     int status = response.statusCode();
                     if (status == 200) {
@@ -246,15 +246,13 @@ public class ChappieAssistant implements Assistant {
                     } else if (status == 204) {
                         return Map.of();
                     } else {
-                        throw new RuntimeException("Failed: HTTP error code : " + status);
+                        throw new RuntimeException("Failed with HTTP " + status + ": " + response.body());
                     }
                 });
     }
 
     private CompletionStage<List<Map>> getArray(HttpRequest request) {
-        HttpClient client = HttpClient.newHttpClient();
-
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     int status = response.statusCode();
                     switch (status) {
@@ -267,7 +265,7 @@ public class ChappieAssistant implements Assistant {
                         case 204:
                             return List.of();
                         default:
-                            throw new RuntimeException("Failed: HTTP error code : " + status);
+                            throw new RuntimeException("Failed with HTTP " + status + ": " + response.body());
                     }
                 });
     }

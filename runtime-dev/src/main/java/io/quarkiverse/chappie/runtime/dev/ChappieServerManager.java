@@ -194,11 +194,13 @@ public class ChappieServerManager {
     public Properties loadConfiguration(String name) {
         Properties fullProps = new Properties();
 
-        if (Files.exists(configFile)) {
-            try (InputStream in = Files.newInputStream(configFile)) {
-                fullProps.load(in);
-            } catch (IOException ex) {
-                ex.printStackTrace();
+        synchronized (configLock) {
+            if (Files.exists(configFile)) {
+                try (InputStream in = Files.newInputStream(configFile)) {
+                    fullProps.load(in);
+                } catch (IOException ex) {
+                    LOG.error("Failed to load configuration", ex);
+                }
             }
         }
 
@@ -257,26 +259,29 @@ public class ChappieServerManager {
     private Properties readFullConfiguration() {
         Properties existingProps = new Properties();
 
-        // Load existing configuration if present
-        if (Files.exists(configFile)) {
-            try (InputStream in = Files.newInputStream(configFile)) {
-                existingProps.load(in);
-            } catch (IOException ex) {
-                ex.printStackTrace();
+        synchronized (configLock) {
+            if (Files.exists(configFile)) {
+                try (InputStream in = Files.newInputStream(configFile)) {
+                    existingProps.load(in);
+                } catch (IOException ex) {
+                    LOG.error("Failed to read configuration", ex);
+                }
             }
         }
         return existingProps;
     }
 
     private boolean saveFullConfiguration(Properties p, Runnable postAction) {
-        try (OutputStream out = Files.newOutputStream(configFile)) {
-            p.store(out, "Chappie Configuration");
-            postAction.run();
-            return true;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            return false;
+        synchronized (configLock) {
+            try (OutputStream out = Files.newOutputStream(configFile)) {
+                p.store(out, "Chappie Configuration");
+            } catch (IOException ex) {
+                LOG.error("Failed to save configuration", ex);
+                return false;
+            }
         }
+        postAction.run();
+        return true;
     }
 
     public String getConfiguredProviderName() {
@@ -382,21 +387,17 @@ public class ChappieServerManager {
     private void startStreamingLog() {
         logStreaming = true;
         this.logExecutor = Executors.newSingleThreadScheduledExecutor();
-        logExecutor.scheduleWithFixedDelay(() -> {
+        logTask = logExecutor.scheduleWithFixedDelay(() -> {
             try (BufferedReader reader = new BufferedReader(new FileReader(logFile.toFile()))) {
                 String line;
-                while (logStreaming) {
-                    if ((line = reader.readLine()) != null) {
-                        logPublisher.submit(line);
-                    }
+                while (logStreaming && (line = reader.readLine()) != null) {
+                    logPublisher.submit(line);
                 }
             } catch (Exception e) {
                 logPublisher.closeExceptionally(e);
                 if (logExecutor != null && !logExecutor.isShutdown()) {
                     logExecutor.shutdownNow();
                 }
-            } finally {
-                //publisher.close();
             }
         }, 0, 200, TimeUnit.MILLISECONDS);
     }
@@ -695,6 +696,7 @@ public class ChappieServerManager {
                 lowerArg.contains("credential");
     }
 
+    private final Object configLock = new Object();
     private final Path configDir = Paths.get(System.getProperty("user.home"), ".quarkus", "chappie");
     private final Path configFile = configDir.resolve("chappie-assistant.properties");
     private final Path logFile = configDir.resolve("chappie-assistant.log");
