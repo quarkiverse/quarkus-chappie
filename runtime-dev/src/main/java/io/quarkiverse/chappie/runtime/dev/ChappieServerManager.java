@@ -56,6 +56,7 @@ public class ChappieServerManager {
 
     private ChappieAssistant assistant;
     private String version;
+    private String quarkusVersion;
     private Map<String, String> chappieRAGProperties;
 
     private String devMcpPath;
@@ -100,10 +101,11 @@ public class ChappieServerManager {
         setCurrentProcess.accept(process);
     }
 
-    public SubmissionPublisher<String> init(String version, ChappieAssistant assistant,
+    public SubmissionPublisher<String> init(String version, String quarkusVersion, ChappieAssistant assistant,
             Map<String, String> chappieRAGProperties, String devMcpPath) {
         this.assistant = assistant;
         this.version = version;
+        this.quarkusVersion = quarkusVersion;
         this.chappieRAGProperties = chappieRAGProperties;
         this.devMcpPath = devMcpPath;
         if (Files.notExists(configDir)) {
@@ -568,6 +570,11 @@ public class ChappieServerManager {
                     }
                 }
                 properties.put("quarkus.datasource.active", "true");
+                if (this.quarkusVersion != null) {
+                    properties.put("chappie.rag.quarkus-version", this.quarkusVersion);
+                }
+                properties.put("chappie.rag.project-dir",
+                        System.getProperty("user.dir"));
             }
 
             // MCP Settings

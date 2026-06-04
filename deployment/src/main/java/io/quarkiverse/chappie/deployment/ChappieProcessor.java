@@ -23,7 +23,6 @@ import io.quarkiverse.chappie.runtime.dev.ChappieRecorder;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.assistant.deployment.spi.AssistantConsoleBuildItem;
 import io.quarkus.assistant.runtime.dev.Assistant;
-import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -71,9 +70,11 @@ public class ChappieProcessor {
 
         String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
+        String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
+
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion(), devmcpPath);
+                extensionVersionBuildItem.getVersion(), quarkusVersion, devmcpPath);
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
@@ -205,15 +206,17 @@ public class ChappieProcessor {
 
     @BuildStep
     public DevServicesResultBuildItem startPgvectorDevService(LaunchModeBuildItem launchMode,
-            DockerStatusBuildItem dockerStatus, ChappieConfig cfg) {
+            DockerStatusBuildItem dockerStatus, ChappieConfig cfg,
+            CurateOutcomeBuildItem curateOutcomeBuildItem) {
 
         if (launchMode.getLaunchMode().isDevOrTest()
                 && cfg.augmenting().enabled()
                 && dockerStatus.isContainerRuntimeAvailable()) {
+            String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
             return DevServicesResultBuildItem.owned()
                     .name("Assistant_Store")
                     .serviceConfig(cfg.augmenting())
-                    .startable(this::createContainer)
+                    .startable(() -> createContainer(quarkusVersion))
                     .postStartHook(
                             c -> LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", c.getContainer().getImage(),
                                     c.getContainer().getJdbcUrl()))
@@ -228,39 +231,75 @@ public class ChappieProcessor {
         return null;
     }
 
-    private StartableContainer<? extends PostgreSQLContainer<?>> createContainer() {
-        String version = Version.getVersion();
-
-        if (version.equalsIgnoreCase("999-SNAPSHOT")) {
-            version = "latest";
-        }
-
-        return createContainer(version);
-    }
-
-    private StartableContainer<PostgreSQLContainer<?>> createContainer(String version) {
-        try {
-            String image = getImage(version);
-
-            DockerImageName img = DockerImageName.parse(image)
-                    .asCompatibleSubstituteFor("postgres");
-
-            return new StartableContainer<>(new PostgreSQLContainer<>(img)
-                    .withDatabaseName("postgres")
-                    .withUsername("postgres")
-                    .withPassword("postgres"));
-        } catch (Throwable t) {
-            if (version.equals("latest")) {
-                throw new RuntimeException("Could not start Chappie RAG Dev Service using Quarkus version latest", t);
+    private String resolveQuarkusVersion(CurateOutcomeBuildItem curateOutcome) {
+        for (var dep : curateOutcome.getApplicationModel().getDependencies()) {
+            if ("io.quarkus".equals(dep.getGroupId()) && "quarkus-core".equals(dep.getArtifactId())) {
+                return dep.getVersion();
             }
-            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s. Falling back to latest version",
-                    version);
-            return createContainer("latest");
+        }
+        return null;
+    }
+
+    private static boolean supportsRagSql(String version) {
+        if (version == null || version.isBlank() || version.contains("SNAPSHOT")) {
+            return true;
+        }
+        try {
+            String[] parts = version.split("[.\\-]");
+            int major = Integer.parseInt(parts[0]);
+            int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+            if (major > 3 || (major == 3 && minor > 36)) {
+                return true;
+            }
+            if (major == 3 && minor == 36) {
+                int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+                return patch >= 1;
+            }
+            return false;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 
-    private String getImage(String version) {
-        return "ghcr.io/quarkusio/chappie-ingestion-quarkus:" + version;
+    private StartableContainer<? extends PostgreSQLContainer<?>> createContainer(String quarkusVersion) {
+        if (supportsRagSql(quarkusVersion)) {
+            return createPlainPgvectorContainer();
+        }
+        return createLegacyContainer(quarkusVersion);
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createPlainPgvectorContainer() {
+        DockerImageName img = DockerImageName.parse("pgvector/pgvector:pg17")
+                .asCompatibleSubstituteFor("postgres");
+
+        return new StartableContainer<>(new PostgreSQLContainer<>(img)
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres"));
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createLegacyContainer(String version) {
+        String tag = (version != null) ? version : "latest";
+        try {
+            return createLegacyImage(tag);
+        } catch (Throwable t) {
+            if ("latest".equals(tag)) {
+                throw new RuntimeException("Could not start Chappie RAG Dev Service using image tag " + tag, t);
+            }
+            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s, falling back to latest", tag);
+            return createLegacyImage("latest");
+        }
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createLegacyImage(String tag) {
+        String image = "ghcr.io/quarkusio/chappie-ingestion-quarkus:" + tag;
+        DockerImageName img = DockerImageName.parse(image)
+                .asCompatibleSubstituteFor("postgres");
+
+        return new StartableContainer<>(new PostgreSQLContainer<>(img)
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres"));
     }
 
     private void printResponse(CompletionStage response, Vertx vertx, long timer) {
