@@ -70,9 +70,11 @@ public class ChappieProcessor {
 
         String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
+        String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
+
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion(), devmcpPath);
+                extensionVersionBuildItem.getVersion(), quarkusVersion, devmcpPath);
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
@@ -223,6 +225,15 @@ public class ChappieProcessor {
                             "chappie.rag.password", c -> c.getContainer().getPassword(),
                             "chappie.rag.active", c -> "false"))
                     .build();
+        }
+        return null;
+    }
+
+    private String resolveQuarkusVersion(CurateOutcomeBuildItem curateOutcome) {
+        for (var dep : curateOutcome.getApplicationModel().getDependencies()) {
+            if ("io.quarkus".equals(dep.getGroupId()) && "quarkus-core".equals(dep.getArtifactId())) {
+                return dep.getVersion();
+            }
         }
         return null;
     }

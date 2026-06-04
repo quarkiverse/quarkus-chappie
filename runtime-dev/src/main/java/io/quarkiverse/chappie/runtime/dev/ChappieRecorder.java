@@ -20,6 +20,7 @@ public class ChappieRecorder {
     public RuntimeValue<SubmissionPublisher<String>> createChappieServerManager(BeanContainer beanContainer,
             ChappieAssistant assistant,
             String chappieServerVersion,
+            String quarkusVersion,
             String devMcpPath) {
         Config config = ConfigProvider.getConfig();
         Map<String, String> chappieRAGProperties = new HashMap<>();
@@ -38,7 +39,8 @@ public class ChappieRecorder {
         }
 
         ChappieServerManager chappieServerManager = beanContainer.beanInstance(ChappieServerManager.class);
-        return new RuntimeValue(chappieServerManager.init(chappieServerVersion, assistant, chappieRAGProperties, devMcpPath));
+        return new RuntimeValue(
+                chappieServerManager.init(chappieServerVersion, quarkusVersion, assistant, chappieRAGProperties, devMcpPath));
     }
 
     void configMap(Config config, Map<String, String> map, String sourceKey, String targetKey) {
