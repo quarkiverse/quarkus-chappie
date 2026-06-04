@@ -568,6 +568,10 @@ public class ChappieServerManager {
                     }
                 }
                 properties.put("quarkus.datasource.active", "true");
+                properties.put("chappie.rag.quarkus-version",
+                        io.quarkus.builder.Version.getVersion());
+                properties.put("chappie.rag.project-dir",
+                        System.getProperty("user.dir"));
             }
 
             // MCP Settings

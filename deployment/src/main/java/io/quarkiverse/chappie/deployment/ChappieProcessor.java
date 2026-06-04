@@ -23,7 +23,6 @@ import io.quarkiverse.chappie.runtime.dev.ChappieRecorder;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.assistant.deployment.spi.AssistantConsoleBuildItem;
 import io.quarkus.assistant.runtime.dev.Assistant;
-import io.quarkus.builder.Version;
 import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -229,38 +228,13 @@ public class ChappieProcessor {
     }
 
     private StartableContainer<? extends PostgreSQLContainer<?>> createContainer() {
-        String version = Version.getVersion();
+        DockerImageName img = DockerImageName.parse("pgvector/pgvector:pg17")
+                .asCompatibleSubstituteFor("postgres");
 
-        if (version.equalsIgnoreCase("999-SNAPSHOT")) {
-            version = "latest";
-        }
-
-        return createContainer(version);
-    }
-
-    private StartableContainer<PostgreSQLContainer<?>> createContainer(String version) {
-        try {
-            String image = getImage(version);
-
-            DockerImageName img = DockerImageName.parse(image)
-                    .asCompatibleSubstituteFor("postgres");
-
-            return new StartableContainer<>(new PostgreSQLContainer<>(img)
-                    .withDatabaseName("postgres")
-                    .withUsername("postgres")
-                    .withPassword("postgres"));
-        } catch (Throwable t) {
-            if (version.equals("latest")) {
-                throw new RuntimeException("Could not start Chappie RAG Dev Service using Quarkus version latest", t);
-            }
-            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s. Falling back to latest version",
-                    version);
-            return createContainer("latest");
-        }
-    }
-
-    private String getImage(String version) {
-        return "ghcr.io/quarkusio/chappie-ingestion-quarkus:" + version;
+        return new StartableContainer<>(new PostgreSQLContainer<>(img)
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres"));
     }
 
     private void printResponse(CompletionStage response, Vertx vertx, long timer) {
