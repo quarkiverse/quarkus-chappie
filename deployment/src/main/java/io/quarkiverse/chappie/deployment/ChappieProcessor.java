@@ -204,13 +204,17 @@ public class ChappieProcessor {
         return new FeatureBuildItem(FEATURE);
     }
 
+    private String resolvedQuarkusVersion;
+
     @BuildStep
     public DevServicesResultBuildItem startPgvectorDevService(LaunchModeBuildItem launchMode,
-            DockerStatusBuildItem dockerStatus, ChappieConfig cfg) {
+            DockerStatusBuildItem dockerStatus, ChappieConfig cfg,
+            CurateOutcomeBuildItem curateOutcomeBuildItem) {
 
         if (launchMode.getLaunchMode().isDevOrTest()
                 && cfg.augmenting().enabled()
                 && dockerStatus.isContainerRuntimeAvailable()) {
+            resolvedQuarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
             return DevServicesResultBuildItem.owned()
                     .name("Assistant_Store")
                     .serviceConfig(cfg.augmenting())
@@ -238,8 +242,60 @@ public class ChappieProcessor {
         return null;
     }
 
+    private static boolean supportsRagSql(String version) {
+        if (version == null || version.isBlank() || version.contains("SNAPSHOT")) {
+            return true;
+        }
+        try {
+            String[] parts = version.split("[.\\-]");
+            int major = Integer.parseInt(parts[0]);
+            int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+            if (major > 3 || (major == 3 && minor > 36)) {
+                return true;
+            }
+            if (major == 3 && minor == 36) {
+                int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+                return patch >= 1;
+            }
+            return false;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     private StartableContainer<? extends PostgreSQLContainer<?>> createContainer() {
+        if (supportsRagSql(resolvedQuarkusVersion)) {
+            return createPlainPgvectorContainer();
+        }
+        return createLegacyContainer(resolvedQuarkusVersion);
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createPlainPgvectorContainer() {
         DockerImageName img = DockerImageName.parse("pgvector/pgvector:pg17")
+                .asCompatibleSubstituteFor("postgres");
+
+        return new StartableContainer<>(new PostgreSQLContainer<>(img)
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres"));
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createLegacyContainer(String version) {
+        String tag = (version != null) ? version : "latest";
+        try {
+            return createLegacyImage(tag);
+        } catch (Throwable t) {
+            if ("latest".equals(tag)) {
+                throw new RuntimeException("Could not start Chappie RAG Dev Service using image tag " + tag, t);
+            }
+            LOG.warnf("Could not start Chappie RAG Dev Service using Quarkus version %s, falling back to latest", tag);
+            return createLegacyImage("latest");
+        }
+    }
+
+    private StartableContainer<PostgreSQLContainer<?>> createLegacyImage(String tag) {
+        String image = "ghcr.io/quarkusio/chappie-ingestion-quarkus:" + tag;
+        DockerImageName img = DockerImageName.parse(image)
                 .asCompatibleSubstituteFor("postgres");
 
         return new StartableContainer<>(new PostgreSQLContainer<>(img)
