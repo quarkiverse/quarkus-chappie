@@ -70,13 +70,11 @@ public class ChappieProcessor {
 
         String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
-        if (resolvedQuarkusVersion == null) {
-            resolvedQuarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
-        }
+        String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
 
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion(), resolvedQuarkusVersion, devmcpPath);
+                extensionVersionBuildItem.getVersion(), quarkusVersion, devmcpPath);
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
@@ -206,8 +204,6 @@ public class ChappieProcessor {
         return new FeatureBuildItem(FEATURE);
     }
 
-    private String resolvedQuarkusVersion;
-
     @BuildStep
     public DevServicesResultBuildItem startPgvectorDevService(LaunchModeBuildItem launchMode,
             DockerStatusBuildItem dockerStatus, ChappieConfig cfg,
@@ -216,11 +212,11 @@ public class ChappieProcessor {
         if (launchMode.getLaunchMode().isDevOrTest()
                 && cfg.augmenting().enabled()
                 && dockerStatus.isContainerRuntimeAvailable()) {
-            resolvedQuarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
+            String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
             return DevServicesResultBuildItem.owned()
                     .name("Assistant_Store")
                     .serviceConfig(cfg.augmenting())
-                    .startable(this::createContainer)
+                    .startable(() -> createContainer(quarkusVersion))
                     .postStartHook(
                             c -> LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", c.getContainer().getImage(),
                                     c.getContainer().getJdbcUrl()))
@@ -265,11 +261,11 @@ public class ChappieProcessor {
         }
     }
 
-    private StartableContainer<? extends PostgreSQLContainer<?>> createContainer() {
-        if (supportsRagSql(resolvedQuarkusVersion)) {
+    private StartableContainer<? extends PostgreSQLContainer<?>> createContainer(String quarkusVersion) {
+        if (supportsRagSql(quarkusVersion)) {
             return createPlainPgvectorContainer();
         }
-        return createLegacyContainer(resolvedQuarkusVersion);
+        return createLegacyContainer(quarkusVersion);
     }
 
     private StartableContainer<PostgreSQLContainer<?>> createPlainPgvectorContainer() {
