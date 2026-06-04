@@ -70,11 +70,13 @@ public class ChappieProcessor {
 
         String devmcpPath = nonApplicationRootPathBuildItem.resolvePath(DEVMCP);
 
-        String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
+        if (resolvedQuarkusVersion == null) {
+            resolvedQuarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
+        }
 
         RuntimeValue<SubmissionPublisher<String>> chappieLog = recorder.createChappieServerManager(beanContainer.getValue(),
                 assistant,
-                extensionVersionBuildItem.getVersion(), quarkusVersion, devmcpPath);
+                extensionVersionBuildItem.getVersion(), resolvedQuarkusVersion, devmcpPath);
 
         DevConsoleManager.register("chappie.setBaseUrl", (t) -> {
             String baseUrl = null;
