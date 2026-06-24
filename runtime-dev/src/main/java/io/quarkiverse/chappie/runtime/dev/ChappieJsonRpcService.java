@@ -35,6 +35,11 @@ public class ChappieJsonRpcService {
         return chappieServerManager.clearConfiguration();
     }
 
+    public List<String> getExtensions() {
+        List<String> extensions = io.quarkus.dev.console.DevConsoleManager.getGlobal("chappie.extensions");
+        return extensions != null ? extensions : List.of();
+    }
+
     // For the Chat screen
     public CompletionStage<List<Map>> getChats() {
         ChappieAssistant a = chappieServerManager.getChappieAssistant();
@@ -94,12 +99,12 @@ public class ChappieJsonRpcService {
         return false;
     }
 
-    public CompletionStage<Map> chat(String message) {
+    public CompletionStage<Map> chat(String message, String extension) {
         ChappieAssistant a = chappieServerManager.getChappieAssistant();
         if (a != null) {
             Map<String, String> vars = new HashMap<>();
             vars.put("message", message);
-            vars.put("extension", "any");
+            vars.put("extension", extension != null && !extension.isBlank() ? extension : "any");
 
             if (chappieServerManager.isMcpEnabled()) {
                 return a.assist(
