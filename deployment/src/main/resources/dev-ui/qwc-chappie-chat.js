@@ -8,6 +8,7 @@ import '@vaadin/message-input';
 import '@vaadin/message-list';
 import '@vaadin/progress-bar';
 import '@vaadin/popover';
+import '@vaadin/combo-box';
 import { popoverRenderer } from '@vaadin/popover/lit.js';
 import './qwc-chappie-chat-history.js';
 import {ring} from 'ldrs';
@@ -44,6 +45,8 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         .buttonsNew {
             display: flex;
             flex-direction: row-reverse;
+            align-items: center;
+            gap: 8px;
         }
     
         .inputExisting {
@@ -86,6 +89,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     
         .buttons {
             display: flex;
+            align-items: center;
             gap: 8px;
         }
         
@@ -101,14 +105,20 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
             font-family: "Lucida Console", Monaco, monospace;
             font-size: smaller;
         }
+
+        .extensionFilter {
+            width: 180px;
+            font-size: var(--lumo-font-size-s);
+        }
     `;
     
     static properties = {
         _heading: { state: true },
         _memoryId: { state: true },
         _messages: { state: true },
-        _inputIsBlocked: { state: true }
-        
+        _inputIsBlocked: { state: true },
+        _selectedExtension: { state: true },
+        _extensions: { state: true }
     };
 
     constructor() {
@@ -118,11 +128,16 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         this._inputIsBlocked = false;
         this._heading = null;
         this._memoryId = null;
+        this._selectedExtension = null;
+        this._extensions = [];
     }
 
     connectedCallback() {
         super.connectedCallback();
         this._getCurrentMessages();
+        this.jsonRpc.getExtensions().then(jsonRpcResponse => {
+            this._extensions = jsonRpcResponse.result || [];
+        });
     }
     
     disconnectedCallback() {
@@ -173,6 +188,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
                                         ${msg('New chat', { id: 'quarkus-chappie-new-chat' })}
                                     </vaadin-button>
                                     ${this._renderHistoryButton()}
+                                    ${this._renderExtensionFilter()}
                                 </div>
                             </div>
                             <div class="inputExistingList">
@@ -230,7 +246,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
     }
     
     _renderNewChat(){
-        return html`<div class="buttonsNew">${this._renderHistoryButton()}</div>
+        return html`<div class="buttonsNew">${this._renderExtensionFilter()}${this._renderHistoryButton()}</div>
                     <div class="inputNew">
                         <h1 class="headerNew">${msg('Welcome to the Assistant Chat', { id: 'quarkus-chappie-welcome' })}</h2>
                         <div style="width:100%;"><vaadin-message-input class="messageInput" @submit="${this._handleSubmit}"></vaadin-message-input></div>
@@ -253,6 +269,27 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         });    
     }
     
+    _renderExtensionFilter(){
+        return html`<vaadin-combo-box
+                        class="extensionFilter"
+                        placeholder="${msg('All extensions', { id: 'quarkus-chappie-all-extensions' })}"
+                        .items="${this._extensions}"
+                        .value="${this._selectedExtension || ''}"
+                        allow-custom-value
+                        clear-button-visible
+                        @change="${this._handleExtensionChange}"
+                        @custom-value-set="${this._handleExtensionCustomValue}"
+                    ></vaadin-combo-box>`;
+    }
+
+    _handleExtensionChange(e){
+        this._selectedExtension = e.target.value || null;
+    }
+
+    _handleExtensionCustomValue(e){
+        this._selectedExtension = e.detail || null;
+    }
+
     _handleSubmit(event) {
         document.body.style.cursor = 'progress';
         let m = event.detail.value;
@@ -260,7 +297,7 @@ export class QwcChappieChat extends observeState(QwcHotReloadElement) {
         this._addAssistantMessage(msg('Thinking ...', { id: 'quarkus-chappie-thinking' }));
         this._inputIsBlocked = true;
         this._scrollToBottom();
-        this.jsonRpc.chat({message:m}).then(jsonRpcResponse => {
+        this.jsonRpc.chat({message:m, extension:this._selectedExtension}).then(jsonRpcResponse => {
             document.body.style.cursor = 'default';
             
             this._removeLastMessage();

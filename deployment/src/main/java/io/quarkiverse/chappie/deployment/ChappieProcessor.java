@@ -99,6 +99,18 @@ public class ChappieProcessor {
             }
         });
 
+        List<String> extensionNames = new ArrayList<>();
+        for (var dep : curateOutcomeBuildItem.getApplicationModel().getDependencies()) {
+            if (dep.isRuntimeExtensionArtifact()) {
+                String name = cleanArtifactId(dep.getArtifactId());
+                if (!name.equals("quarkus-core") && !name.startsWith("quarkus-chappie")) {
+                    extensionNames.add(name.startsWith("quarkus-") ? name.substring("quarkus-".length()) : name);
+                }
+            }
+        }
+        Collections.sort(extensionNames);
+        DevConsoleManager.setGlobal("chappie.extensions", extensionNames);
+
         DevConsoleManager.setGlobal(DevConsoleManager.DEV_MANAGER_GLOBALS_ASSISTANT, assistant);
 
         footerLogProducer.produce(new FooterLogBuildItem("Assistant", chappieLog));
