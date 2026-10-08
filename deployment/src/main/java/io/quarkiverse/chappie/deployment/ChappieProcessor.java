@@ -226,18 +226,18 @@ public class ChappieProcessor {
                 && dockerStatus.isContainerRuntimeAvailable()) {
             String quarkusVersion = resolveQuarkusVersion(curateOutcomeBuildItem);
             return DevServicesResultBuildItem.owned()
-                    .name("Assistant_Store")
+                    .feature("Assistant_Store")
                     .serviceConfig(cfg.augmenting())
                     .startable(() -> createContainer(quarkusVersion))
                     .postStartHook(
                             c -> LOG.infof("Chappie RAG Dev Service started from %s, JDBC=%s", c.getContainer().getImage(),
                                     c.getContainer().getJdbcUrl()))
-                    .configProvider(Map.of(
-                            "chappie.rag.db-kind", c -> "postgresql",
-                            "chappie.rag.jdbc.url", c -> c.getContainer().getJdbcUrl(),
-                            "chappie.rag.username", c -> c.getContainer().getUsername(),
-                            "chappie.rag.password", c -> c.getContainer().getPassword(),
-                            "chappie.rag.active", c -> "false"))
+                    .configProvider(c -> Map.of(
+                            "chappie.rag.db-kind", "postgresql",
+                            "chappie.rag.jdbc.url", c.getContainer().getJdbcUrl(),
+                            "chappie.rag.username", c.getContainer().getUsername(),
+                            "chappie.rag.password", c.getContainer().getPassword(),
+                            "chappie.rag.active", "false"))
                     .build();
         }
         return null;

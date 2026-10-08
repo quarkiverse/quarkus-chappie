@@ -39,8 +39,8 @@ import org.jboss.logging.Logger;
 
 import io.quarkus.assistant.runtime.dev.Assistant;
 import io.quarkus.dev.console.DevConsoleManager;
-import io.quarkus.devui.runtime.spi.McpEvent;
-import io.quarkus.devui.runtime.spi.McpServerConfiguration;
+import io.quarkus.devmcp.spi.McpEvent;
+import io.quarkus.devmcp.spi.McpServerConfiguration;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.util.ClassPathUtils;
 import io.smallrye.mutiny.Multi;
