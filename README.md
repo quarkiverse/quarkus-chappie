@@ -22,6 +22,7 @@ extension to you project, example in maven:
 | 1.5.x           | 3.29.0+         |
 | 1.6.x           | 3.31.0+         |
 | 1.7.x           | 3.36.1+         |
+| 2.x             | 4.0.0.Beta1+    |
 
 
 Chappie is a Dev Mode only extension, so this does not add anything to your production application.
@@ -29,6 +30,8 @@ Chappie is a Dev Mode only extension, so this does not add anything to your prod
 To use chappie, you need to configure it with either an OpenAI Compatible Service or have Ollama running locally. You can configure it in Dev UI.
 
 Starting with 1.7.x (Quarkus 3.36.1+), documentation search data is loaded automatically from Maven Central at startup — no pre-built Docker image required. For older Quarkus versions, the extension falls back to the pre-built `chappie-ingestion-quarkus` image.
+
+2.x targets Quarkus 4 and requires JDK 21. If you are still on Quarkus 3, stay on 1.7.x, which is maintained from the `1.x` branch.
 
 # Building this extension and sample
 
