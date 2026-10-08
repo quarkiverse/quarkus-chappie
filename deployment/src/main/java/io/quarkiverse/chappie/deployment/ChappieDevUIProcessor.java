@@ -12,7 +12,7 @@ import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.BuildSteps;
-import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
+import io.quarkus.devjsonrpc.spi.JsonRPCProvidersBuildItem;
 import io.quarkus.devui.spi.buildtime.BuildTimeActionBuildItem;
 import io.quarkus.devui.spi.page.MenuPageBuildItem;
 import io.quarkus.devui.spi.page.Page;
@@ -81,7 +81,7 @@ class ChappieDevUIProcessor {
                 .parameter("queryMessage", String.class, "The search query")
                 .parameter("maxResults", Integer.class, "The maximum number of results to return")
                 .parameter("extension", String.class, "The extension to filter results by, e.g. 'hibernate-orm', may be empty")
-                .enableMcpFuctionByDefault()
+                .enableMcpFunctionByDefault()
                 .assistantFunction((assistant, p) -> {
                     if (assistant instanceof ChappieAssistant) {
                         // Assistant doesn't have search docs API

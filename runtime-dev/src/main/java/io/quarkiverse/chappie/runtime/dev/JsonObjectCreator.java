@@ -7,26 +7,28 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.victools.jsonschema.generator.Option;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
-import com.github.victools.jsonschema.module.jackson.JacksonModule;
+import com.github.victools.jsonschema.module.jackson.JacksonSchemaModule;
 
 import io.quarkus.builder.Version;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.type.TypeFactory;
 
 public class JsonObjectCreator {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper objectMapper = JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     private static final ObjectNode commonInputNode;
 
@@ -63,7 +65,7 @@ public class JsonObjectCreator {
             }
 
             return objectMapper.writeValueAsString(inputNode);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new RuntimeException(ex);
         }
     }
@@ -120,7 +122,7 @@ public class JsonObjectCreator {
     public static String toJsonString(Map<String, Object> data) {
         try {
             return objectMapper.writeValueAsString(data);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new RuntimeException(ex);
         }
     }
@@ -150,7 +152,7 @@ public class JsonObjectCreator {
 
     private static final SchemaGenerator SCHEMA_GENERATOR = new SchemaGenerator(
             new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12)
-                    .with(new JacksonModule(RESPECT_JSONPROPERTY_REQUIRED))
+                    .with(new JacksonSchemaModule(RESPECT_JSONPROPERTY_REQUIRED))
                     .without(Option.FIELDS_DERIVED_FROM_ARGUMENTFREE_METHODS)
                     .without(Option.GETTER_METHODS)
                     .without(Option.NONSTATIC_NONVOID_NONGETTER_METHODS)
