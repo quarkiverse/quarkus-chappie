@@ -177,7 +177,21 @@ public class ChappieAssistant implements Assistant {
     }
 
     public void setBaseUrl(String baseUrl) {
+        if (baseUrl != null && !isValidBaseUrl(baseUrl)) {
+            Log.warn("Ignoring Chappie baseUrl [" + baseUrl + "] as it is not a valid http(s) URL");
+            baseUrl = null;
+        }
         this.baseUrl = baseUrl;
+    }
+
+    private boolean isValidBaseUrl(String baseUrl) {
+        try {
+            URI uri = URI.create(baseUrl);
+            String scheme = uri.getScheme();
+            return uri.getHost() != null && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     public void clearMemory() {
