@@ -4,8 +4,10 @@
 
 ## Welcome to the Chappie Extension
 
-This extension adds some AI to you quarkus dev experience. To use this in your project, simply add the
-extension to you project, example in maven:
+Chappie powers the Quarkus Dev Assistant. See the [Dev Assistant guide](https://quarkus.io/guides/assistant/) for the full documentation.
+
+This extension adds some AI to your Quarkus dev experience. To use this in your project, simply add the
+extension to your project, example in maven:
 
 ```
 <dependency>
